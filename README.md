@@ -10,6 +10,6 @@ Anything that can be done in this tool could be done by hand with tools like key
 
 ## Running s3s2
 
-`s3s2 share -b sharing-bucket -k https://jemurai.com/.well_known/id_rsa.pub .`
+`s3s2 share --bucket sharing-bucket --key https://jemurai.com/.well_known/id_rsa.pub --directory .`
 
 This will take the current working directory, list the files to build a manifest.json file, put them all in a Zip file, encrypt that with the public key of the receiving party (so that only they, with the private key can read it) and drop the file in an S3 bucket.
