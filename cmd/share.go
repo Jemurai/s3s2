@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	archive "github.com/jemurai/s3s2/archive"
 	manifest "github.com/jemurai/s3s2/manifest"
 )
 
@@ -43,12 +44,14 @@ that it will be encrypted.`,
 		context := buildContext(cmd)
 		m := manifest.BuildManifest(context.Directory, context.Org)
 
+		var filez []string
 		for i := 0; i < len(m.Files); i++ {
-			// This is just debug at this point.
-			fmt.Println(m.Files[i].Name, m.Files[i].Hash)
+			filez = append(filez, m.Files[i].Name)
+			fmt.Println(m.Files[i].Name, m.Files[i].Hash) // This is just debug.
 		}
 
-		// TODO: Archive
+		archive.ZipFiles("test.zip", filez) // TODO:  Work on file name.
+
 		// TODO: Encrypt with GPG
 		// TODO: Encryption config for S3
 		// TODO: Upload file to S3
