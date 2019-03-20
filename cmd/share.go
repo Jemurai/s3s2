@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 
 	archive "github.com/jemurai/s3s2/archive"
@@ -49,8 +50,9 @@ that it will be encrypted.`,
 			filez = append(filez, m.Files[i].Name)
 			fmt.Println(m.Files[i].Name, m.Files[i].Hash) // This is just debug.
 		}
-
-		archive.ZipFiles("test.zip", filez) // TODO:  Work on file name.
+		fnuuid, _ := uuid.NewV4()
+		fn := "s3s2_" + fnuuid.String() + ".zip"
+		archive.ZipFiles(fn, filez)
 
 		// TODO: Encrypt with GPG
 		// TODO: Encryption config for S3
