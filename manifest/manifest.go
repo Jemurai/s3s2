@@ -15,52 +15,77 @@
 package manifest
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
+	"time"
 )
 
 // FileDescription is meta info about a file we will want to
 // include in the Manifest.
 type FileDescription struct {
-	Name string
-	Size int64
-	//	Type string
-	//	Hash string
-	//	Date int64
+	Name     string
+	Size     int64
+	Modified time.Time
+	Hash     string
 }
 
 // Manifest is a description of files.
 type Manifest struct {
-	Name  string
-	Files []FileDescription
+	Name         string
+	Timestamp    time.Time
+	Organization string
+	Username     string
+	User         string
+	SudoUser     string
+	Files        []FileDescription
 }
 
 // BuildManifest builds a manifest from a directory.
-func BuildManifest(directory string) Manifest {
+func BuildManifest(directory string, org string) Manifest {
 	var files []FileDescription
 	err := filepath.Walk(directory,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-
-			// TODO:  Add detail to file description.
-			files = append(files, FileDescription{path, info.Size()})
+			if !info.IsDir() {
+				sha256hash := hash(path)
+				files = append(files, FileDescription{path, info.Size(), info.ModTime(), sha256hash})
+			}
 			return nil
 		})
 	if err != nil {
 		log.Println(err)
 	}
 
-	// TODO:  Add more info to Manifest itself.
-	manifest := Manifest{"Manifest", files}
+	user, err := user.Current()
+	sudoUser := os.Getenv("SUDO_USER") // In case they are sudo'ing, we can know the acting user.
+	manifest := Manifest{"Manifest", time.Now(), org, user.Name, user.Username, sudoUser, files}
 	writeManifest(manifest, directory)
 	return manifest
 }
 
-func writeManifest(manifest Manifest, directory string) error {
-	// TODO:  Write JSON encoded manifest file.
+func hash(file string) string {
+	hasher := sha256.New()
+	s, err := ioutil.ReadFile(file)
+	hasher.Write(s) // TODO: Revisit to add streaming.
+	if err != nil {
+		log.Fatal(err)
+	}
+	return hex.EncodeToString(hasher.Sum(nil))
+}
 
+func writeManifest(manifest Manifest, directory string) error {
+	file, _ := json.MarshalIndent(manifest, "", " ")
+	filename := directory + "/manifest.json"
+	fmt.Println(filename)
+	ioutil.WriteFile(filename, file, 0644)
 	return nil
 }

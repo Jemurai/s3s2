@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -28,6 +27,7 @@ type ShareContext struct {
 	Directory string
 	Bucket    string
 	Key       string
+	Org       string
 }
 
 // shareCmd represents the share command
@@ -41,13 +41,12 @@ either GPG encrypted or passes S3 headers indicating
 that it will be encrypted.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		context := buildContext(cmd)
-		m := manifest.BuildManifest(context.Directory)
+		m := manifest.BuildManifest(context.Directory, context.Org)
 
 		for i := 0; i < len(m.Files); i++ {
-			//fmt.Println(m.Files[i].Name)
+			// This is just debug at this point.
+			fmt.Println(m.Files[i].Name, m.Files[i].Hash)
 		}
-		b, _ := json.Marshal(m)
-		fmt.Println(b)
 
 		// TODO: Archive
 		// TODO: Encrypt with GPG
@@ -62,7 +61,8 @@ func buildContext(cmd *cobra.Command) ShareContext {
 	directory, _ := cmd.PersistentFlags().GetString("directory")
 	bucket, _ := cmd.PersistentFlags().GetString("bucket")
 	key, _ := cmd.PersistentFlags().GetString("key")
-	context := ShareContext{directory, bucket, key}
+	org, _ := cmd.PersistentFlags().GetString("org")
+	context := ShareContext{directory, bucket, key, org}
 	return context
 }
 
@@ -72,5 +72,7 @@ func init() {
 	shareCmd.MarkFlagRequired("bucket")
 	shareCmd.PersistentFlags().String("directory", "", "The directory to zip, encrypt and share.")
 	shareCmd.MarkFlagRequired("directory")
+	shareCmd.PersistentFlags().String("org", "", "The organization that owns the files.")
+	shareCmd.MarkFlagRequired("org")
 	shareCmd.PersistentFlags().String("key", "", "The receiver's public key.  A link or a local file path.")
 }
