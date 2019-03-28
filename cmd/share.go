@@ -55,6 +55,7 @@ that it will be encrypted.`,
 		archive.ZipFiles(fn, filez)
 
 		// TODO: Encrypt with GPG
+
 		// TODO: Encryption config for S3
 		// TODO: Upload file to S3
 	},
