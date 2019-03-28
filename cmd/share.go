@@ -21,14 +21,17 @@ import (
 	"github.com/spf13/cobra"
 
 	archive "github.com/jemurai/s3s2/archive"
+	encrypt "github.com/jemurai/s3s2/encrypt"
 	manifest "github.com/jemurai/s3s2/manifest"
+	s3helper "github.com/jemurai/s3s2/s3"
 )
 
 // ShareContext is the context we extract from the command.
 type ShareContext struct {
 	Directory string
 	Bucket    string
-	Key       string
+	PubKey    string
+	AwsKey    string
 	Org       string
 }
 
@@ -41,8 +44,10 @@ var shareCmd = &cobra.Command{
 Behind the scenes, s3s2 checks to ensure the file is 
 either GPG encrypted or passes S3 headers indicating
 that it will be encrypted.`,
+
 	Run: func(cmd *cobra.Command, args []string) {
 		context := buildContext(cmd)
+		checkContext(context)
 		m := manifest.BuildManifest(context.Directory, context.Org)
 
 		var filez []string
@@ -54,10 +59,10 @@ that it will be encrypted.`,
 		fn := "s3s2_" + fnuuid.String() + ".zip"
 		archive.ZipFiles(fn, filez)
 
-		// TODO: Encrypt with GPG
-
-		// TODO: Encryption config for S3
-		// TODO: Upload file to S3
+		if context.PubKey != "" {
+			fn = encrypt.Encrypt(fn, context.PubKey)
+		}
+		s3helper.UploadFile(fn, context.Bucket, context.AwsKey)
 	},
 }
 
@@ -66,10 +71,21 @@ that it will be encrypted.`,
 func buildContext(cmd *cobra.Command) ShareContext {
 	directory, _ := cmd.PersistentFlags().GetString("directory")
 	bucket, _ := cmd.PersistentFlags().GetString("bucket")
-	key, _ := cmd.PersistentFlags().GetString("key")
+	pubKey, _ := cmd.PersistentFlags().GetString("pubkey")
+	awsKey, _ := cmd.PersistentFlags().GetString("awskey")
 	org, _ := cmd.PersistentFlags().GetString("org")
-	context := ShareContext{directory, bucket, key, org}
+	context := ShareContext{directory, bucket, pubKey, awsKey, org}
+
 	return context
+}
+
+func checkContext(context ShareContext) {
+	if context.AwsKey != "" || context.PubKey != "" {
+		// OK, that's good.  Looks like we have a key.
+	} else {
+		fmt.Println("Need to supply either AWS Key for S3 level encryption or a public key for GPG encryption or both!")
+		panic("Insufficient key material to perform safe encryption.")
+	}
 }
 
 func init() {
@@ -80,5 +96,6 @@ func init() {
 	shareCmd.MarkFlagRequired("directory")
 	shareCmd.PersistentFlags().String("org", "", "The organization that owns the files.")
 	shareCmd.MarkFlagRequired("org")
-	shareCmd.PersistentFlags().String("key", "", "The receiver's public key.  A link or a local file path.")
+	shareCmd.PersistentFlags().String("pubkey", "", "The receiver's public key.  A link or a local file path.")
+	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 }

@@ -20,6 +20,7 @@ What S3S2 makes easy is:
 - Distributable configuration to make it easy to give a configuration to a partner that they can then use
 
 The goal is that a partner can run a simple command like this:
+
 `s3s2 share --config /your/config.json the_directory` 
 
 ### How Does It Work?
@@ -41,7 +42,9 @@ We generally recommend using aws-vault (https://github.com/99designs/aws-vault) 
 environment variables.
 
 S3S2 is designed to work seamlessly with aws-vault so that you can say: 
+
 `aws-vault exec jemurai s3s2 share /directory`
+
 and it will pick up the correct AWS credentials.
 
 ### Creating a Bucket
@@ -55,6 +58,7 @@ In that case, many of the configuration variables are the same.  Sometimes we wa
 with the partner so that everything "just works".
 
 To do that, run: 
+
 `s3s2 config`
 
 and you will be prompted for each parameter, which will then be written to a configuration file.
@@ -72,8 +76,8 @@ specify a config file like this:
 
 ## Running
 
-TODO
-
+Running s3s2 is as simple as invoking this from a terminal or command prompt:  
+`s3s2 share /directory/to/share>`
 
 ## Getting Help
 
@@ -81,4 +85,4 @@ Feel free to create issues and work with us on GitHub:
 https://github.com/Jemurai/s3s2
 
 You can find Jemurai folks to talk about S3S2 on Gitter:
-https://gitter.im/jemurai-s3s2/community
+https://gitter.im/jemurai-oss/s3s2
