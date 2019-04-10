@@ -31,6 +31,7 @@ S3S2 is just using open and existing tools in a secure combination.
 
 ## Installation
 
+We produce packages for common platforms that you can just download from 
 
 ## Running the Tool
 

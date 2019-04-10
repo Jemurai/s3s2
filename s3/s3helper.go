@@ -28,8 +28,13 @@ import (
 // The share command should only allow this to get called
 // IFF there is a key or the file has been gpg encrypted
 // for the receiver.
-func UploadFile(filename string, bucket string, key string) error {
-	sess := session.Must(session.NewSession())
+func UploadFile(filename string, bucket string, region string, key string) error {
+	fmt.Printf("Uploading file.")
+
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(region),
+	}))
+
 	uploader := s3manager.NewUploader(sess)
 
 	f, err := os.Open(filename)
@@ -39,9 +44,11 @@ func UploadFile(filename string, bucket string, key string) error {
 
 	if key != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(key),
-			Body:   f,
+			Bucket:               aws.String(bucket),
+			Key:                  aws.String(f.Name()),
+			ServerSideEncryption: aws.String("aws:kms"),
+			SSEKMSKeyId:          aws.String(key),
+			Body:                 f,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to upload file, %v", err)

@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
@@ -62,7 +63,10 @@ that it will be encrypted.`,
 		if context.PubKey != "" {
 			fn = encrypt.Encrypt(fn, context.PubKey)
 		}
-		s3helper.UploadFile(fn, context.Bucket, context.AwsKey)
+		err := s3helper.UploadFile(fn, context.Bucket, "us-east-1", context.AwsKey)
+		if err != nil {
+			log.Fatal(err)
+		}
 	},
 }
 
