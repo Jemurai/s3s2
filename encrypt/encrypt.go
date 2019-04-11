@@ -17,10 +17,13 @@ package encrypt
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 
+	uuid "github.com/satori/go.uuid"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
@@ -59,8 +62,21 @@ func Encrypt(filename string, pubkey string) {
 
 func getKey(keypath string) string {
 	if isValidURL(keypath) {
-		return "url..."
+		resp, err := http.Get(keypath)
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		fnuuid, _ := uuid.NewV4()
+		fn := "s3s2_" + fnuuid.String() + ".asc"
+		ioutil.WriteFile(fn, body, 0644)
 	}
+
+	// Otherwise, it should be a local file we can just use.
 	return keypath
 }
 
