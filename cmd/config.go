@@ -20,16 +20,11 @@ import (
 	"io/ioutil"
 	"os/user"
 
+	"github.com/jemurai/s3s2/options"
+
 	"github.com/c-bata/go-prompt"
 	"github.com/spf13/cobra"
 )
-
-// BaseConfig is the core configuration that s3s3 uses.
-type BaseConfig struct {
-	Bucket string
-	Org    string
-	Dir    string
-}
 
 // configCmd represents the config command
 var configCmd = &cobra.Command{
@@ -42,13 +37,29 @@ var configCmd = &cobra.Command{
 		fmt.Println("Please specify a bucket.")
 		bucket := prompt.Input("> ", completer)
 
+		fmt.Println("Please specify a region.")
+		region := prompt.Input("> ", completer)
+
 		fmt.Println("Please specify an org.")
 		org := prompt.Input("> ", completer)
 
 		fmt.Println("Please specify a working directory.")
 		dir := prompt.Input("> ", completer)
 
-		bc := BaseConfig{bucket, org, dir}
+		fmt.Println("Please specify a file prefix (nothing sensitive).")
+		prefix := prompt.Input("> ", completer)
+
+		fmt.Println("Please specify a public key to use (file path or url).")
+		pubkey := prompt.Input("> ", completer)
+
+		bc := options.Options{
+			Directory: dir,
+			Bucket:    bucket,
+			Org:       org,
+			Region:    region,
+			Prefix:    prefix,
+			PubKey:    pubkey,
+		}
 		data, _ := json.MarshalIndent(bc, "", " ")
 		err := ioutil.WriteFile(fn, data, 0644)
 		if err != nil {

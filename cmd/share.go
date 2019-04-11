@@ -20,6 +20,7 @@ import (
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	archive "github.com/jemurai/s3s2/archive"
 	encrypt "github.com/jemurai/s3s2/encrypt"
@@ -66,17 +67,26 @@ that it will be encrypted.`,
 // buildContext sets up the ShareContext we're going to use
 // to keep track of our state while we go.
 func buildOptions(cmd *cobra.Command) options.Options {
-	directory, _ := cmd.PersistentFlags().GetString("directory")
-	bucket, _ := cmd.PersistentFlags().GetString("bucket")
-	region, _ := cmd.PersistentFlags().GetString("region")
-	pubKey, _ := cmd.PersistentFlags().GetString("pubkey")
-	awsKey, _ := cmd.PersistentFlags().GetString("awskey")
-	org, _ := cmd.PersistentFlags().GetString("org")
-	prefix, _ := cmd.PersistentFlags().GetString("prefix")
-	options := options.Options{Directory: directory,
-		Bucket: bucket, Region: region,
-		PubKey: pubKey, AwsKey: awsKey,
-		Org: org, Prefix: prefix}
+	directory := viper.GetString("directory")
+	bucket := viper.GetString("bucket")
+	region := viper.GetString("region")
+	pubKey := viper.GetString("pubkey")
+	awsKey := viper.GetString("awskey")
+	org := viper.GetString("org")
+	prefix := viper.GetString("prefix")
+
+	options := options.Options{
+		Directory: directory,
+		Bucket:    bucket,
+		Region:    region,
+		PubKey:    pubKey,
+		AwsKey:    awsKey,
+		Org:       org,
+		Prefix:    prefix,
+	}
+
+	fmt.Println("Captured options: ")
+	fmt.Print(options)
 
 	return options
 }
@@ -92,6 +102,7 @@ func checkOptions(options options.Options) {
 
 func init() {
 	rootCmd.AddCommand(shareCmd)
+
 	shareCmd.PersistentFlags().String("bucket", "", "The bucket to share the file to.")
 	shareCmd.MarkFlagRequired("bucket")
 	shareCmd.PersistentFlags().String("region", "", "The region the S3 bucket is in. Ex: us-east-1")
@@ -103,4 +114,13 @@ func init() {
 	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path.")
 	shareCmd.PersistentFlags().String("pubkey", "", "The receiver's public key.  A link or a local file path.")
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
+
+	viper.BindPFlag("bucket", shareCmd.PersistentFlags().Lookup("bucket"))
+	viper.BindPFlag("region", shareCmd.PersistentFlags().Lookup("region"))
+	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
+	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
+	viper.BindPFlag("prefex", shareCmd.PersistentFlags().Lookup("prefix"))
+	viper.BindPFlag("pubkey", shareCmd.PersistentFlags().Lookup("pubkey"))
+	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
+
 }
