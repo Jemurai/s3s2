@@ -74,6 +74,7 @@ func getKey(keypath string) string {
 		fnuuid, _ := uuid.NewV4()
 		fn := "s3s2_" + fnuuid.String() + ".asc"
 		ioutil.WriteFile(fn, body, 0644)
+		return fn
 	}
 
 	// Otherwise, it should be a local file we can just use.
