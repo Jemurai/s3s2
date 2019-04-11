@@ -1,0 +1,2 @@
+Contact: security@jemurai.com
+Canonical: https://s3s2.jemurai.com/.well_known/security.txt
