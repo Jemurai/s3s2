@@ -25,6 +25,8 @@ import (
 	"os/user"
 	"path/filepath"
 	"time"
+
+	"github.com/jemurai/s3s2/options"
 )
 
 // FileDescription is meta info about a file we will want to
@@ -48,9 +50,9 @@ type Manifest struct {
 }
 
 // BuildManifest builds a manifest from a directory.
-func BuildManifest(directory string, org string) Manifest {
+func BuildManifest(options options.Options) Manifest {
 	var files []FileDescription
-	err := filepath.Walk(directory,
+	err := filepath.Walk(options.Directory,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -67,15 +69,15 @@ func BuildManifest(directory string, org string) Manifest {
 
 	user, err := user.Current()
 	sudoUser := os.Getenv("SUDO_USER") // In case they are sudo'ing, we can know the acting user.
-	manifest := Manifest{"Manifest", time.Now(), org, user.Name, user.Username, sudoUser, files}
-	writeManifest(manifest, directory)
+	manifest := Manifest{"Manifest", time.Now(), options.Org, user.Name, user.Username, sudoUser, files}
+	writeManifest(manifest, options.Directory)
 	return manifest
 }
 
 func hash(file string) string {
 	hasher := sha256.New()
 	s, err := ioutil.ReadFile(file)
-	hasher.Write(s) // TODO: Revisit to add streaming.
+	hasher.Write(s)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,7 +86,7 @@ func hash(file string) string {
 
 func writeManifest(manifest Manifest, directory string) error {
 	file, _ := json.MarshalIndent(manifest, "", " ")
-	filename := directory + "/manifest.json"
+	filename := directory + "/s3s2_manifest.json"
 	fmt.Println(filename)
 	ioutil.WriteFile(filename, file, 0644)
 	return nil

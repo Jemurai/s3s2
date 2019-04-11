@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"os"
 
+	options "github.com/jemurai/s3s2/options"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -28,11 +30,11 @@ import (
 // The share command should only allow this to get called
 // IFF there is a key or the file has been gpg encrypted
 // for the receiver.
-func UploadFile(filename string, bucket string, region string, key string) error {
+func UploadFile(filename string, options options.Options) error {
 	fmt.Printf("Uploading file.")
 
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(region),
+		Region: aws.String(options.Region),
 	}))
 
 	uploader := s3manager.NewUploader(sess)
@@ -42,12 +44,12 @@ func UploadFile(filename string, bucket string, region string, key string) error
 		return fmt.Errorf("failed to open file %q, %v", filename, err)
 	}
 
-	if key != "" {
+	if options.AwsKey != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{
-			Bucket:               aws.String(bucket),
-			Key:                  aws.String(f.Name()),
+			Bucket:               aws.String(options.Bucket),
+			Key:                  aws.String(options.Prefix + f.Name()),
 			ServerSideEncryption: aws.String("aws:kms"),
-			SSEKMSKeyId:          aws.String(key),
+			SSEKMSKeyId:          aws.String(options.AwsKey),
 			Body:                 f,
 		})
 		if err != nil {
@@ -56,7 +58,7 @@ func UploadFile(filename string, bucket string, region string, key string) error
 		fmt.Printf("file uploaded to, %s\n", result.Location)
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(bucket),
+			Bucket: aws.String(options.Bucket),
 			Body:   f,
 		})
 		if err != nil {

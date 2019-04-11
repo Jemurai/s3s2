@@ -24,17 +24,9 @@ import (
 	archive "github.com/jemurai/s3s2/archive"
 	encrypt "github.com/jemurai/s3s2/encrypt"
 	manifest "github.com/jemurai/s3s2/manifest"
+	options "github.com/jemurai/s3s2/options"
 	s3helper "github.com/jemurai/s3s2/s3"
 )
-
-// ShareContext is the context we extract from the command.
-type ShareContext struct {
-	Directory string
-	Bucket    string
-	PubKey    string
-	AwsKey    string
-	Org       string
-}
 
 // shareCmd represents the share command
 var shareCmd = &cobra.Command{
@@ -47,9 +39,9 @@ either GPG encrypted or passes S3 headers indicating
 that it will be encrypted.`,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		context := buildContext(cmd)
-		checkContext(context)
-		m := manifest.BuildManifest(context.Directory, context.Org)
+		options := buildOptions(cmd)
+		checkOptions(options)
+		m := manifest.BuildManifest(options)
 
 		var filez []string
 		for i := 0; i < len(m.Files); i++ {
@@ -60,10 +52,11 @@ that it will be encrypted.`,
 		fn := "s3s2_" + fnuuid.String() + ".zip"
 		archive.ZipFiles(fn, filez)
 
-		if context.PubKey != "" {
-			fn = encrypt.Encrypt(fn, context.PubKey)
+		if options.PubKey != "" {
+			encrypt.Encrypt(fn, options.PubKey)
+			fn = fn + ".gpg"
 		}
-		err := s3helper.UploadFile(fn, context.Bucket, "us-east-1", context.AwsKey)
+		err := s3helper.UploadFile(fn, options)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -72,19 +65,24 @@ that it will be encrypted.`,
 
 // buildContext sets up the ShareContext we're going to use
 // to keep track of our state while we go.
-func buildContext(cmd *cobra.Command) ShareContext {
+func buildOptions(cmd *cobra.Command) options.Options {
 	directory, _ := cmd.PersistentFlags().GetString("directory")
 	bucket, _ := cmd.PersistentFlags().GetString("bucket")
+	region, _ := cmd.PersistentFlags().GetString("region")
 	pubKey, _ := cmd.PersistentFlags().GetString("pubkey")
 	awsKey, _ := cmd.PersistentFlags().GetString("awskey")
 	org, _ := cmd.PersistentFlags().GetString("org")
-	context := ShareContext{directory, bucket, pubKey, awsKey, org}
+	prefix, _ := cmd.PersistentFlags().GetString("prefix")
+	options := options.Options{Directory: directory,
+		Bucket: bucket, Region: region,
+		PubKey: pubKey, AwsKey: awsKey,
+		Org: org, Prefix: prefix}
 
-	return context
+	return options
 }
 
-func checkContext(context ShareContext) {
-	if context.AwsKey != "" || context.PubKey != "" {
+func checkOptions(options options.Options) {
+	if options.AwsKey != "" || options.PubKey != "" {
 		// OK, that's good.  Looks like we have a key.
 	} else {
 		fmt.Println("Need to supply either AWS Key for S3 level encryption or a public key for GPG encryption or both!")
@@ -96,10 +94,13 @@ func init() {
 	rootCmd.AddCommand(shareCmd)
 	shareCmd.PersistentFlags().String("bucket", "", "The bucket to share the file to.")
 	shareCmd.MarkFlagRequired("bucket")
+	shareCmd.PersistentFlags().String("region", "", "The region the S3 bucket is in. Ex: us-east-1")
+	shareCmd.MarkFlagRequired("region")
 	shareCmd.PersistentFlags().String("directory", "", "The directory to zip, encrypt and share.")
 	shareCmd.MarkFlagRequired("directory")
 	shareCmd.PersistentFlags().String("org", "", "The organization that owns the files.")
 	shareCmd.MarkFlagRequired("org")
+	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path.")
 	shareCmd.PersistentFlags().String("pubkey", "", "The receiver's public key.  A link or a local file path.")
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 }

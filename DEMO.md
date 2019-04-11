@@ -5,7 +5,9 @@
 1. Create an S3 bucket for S3S2 to use.
 1. Run `s3s2 config` to build the default config file
 1. Run `s3s2 share --bucket s3s2-demo --directory ~/Desktop/s3s2/` (Fails because no encryption)
-1. Run `s3s2 share --bucket s3s2-demo --directory ~/Desktop/s3s2/ --awskey key-id` (Succeed)
+1. Run `s3s2 share --bucket s3s2-demo --directory ~/Desktop/s3s2/ --awskey 933c...9d9 --region us-east-1` (Succeed)
 1. Pull file from console to show encryption
 1. Notice manifest
-1. Run `s3s2 share --bucket s3s2-demo --directory ~/Desktop/s3s2/ --pubkey key-id` (Succeed)
+1. Run `s3s2 share --bucket s3s2-demo --directory ~/Desktop/s3s2/ --awskey 933c...9d9 --region us-east-1 --pubkey ./s3s2-pub.asc` (Succeed)
+1. Pull file to show gpg encryption
+1. GPG decrypt
