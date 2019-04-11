@@ -68,7 +68,7 @@ func initConfig() {
 			os.Exit(1)
 		}
 
-		// Search config in home directory with name ".s3s2" (without extension).
+		// Search config in home directory with name ".s3s2" (with extension!!!).
 		viper.AddConfigPath(home)
 		viper.SetConfigName(".s3s2")
 	}

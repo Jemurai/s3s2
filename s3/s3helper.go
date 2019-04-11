@@ -59,6 +59,7 @@ func UploadFile(filename string, options options.Options) error {
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(options.Bucket),
+			Key:    aws.String(options.Prefix + f.Name()),
 			Body:   f,
 		})
 		if err != nil {
