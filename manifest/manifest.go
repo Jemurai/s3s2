@@ -18,13 +18,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/user"
 	"path/filepath"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/jemurai/s3s2/options"
 )
@@ -64,7 +64,7 @@ func BuildManifest(options options.Options) Manifest {
 			return nil
 		})
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 	}
 
 	user, err := user.Current()
@@ -87,7 +87,7 @@ func hash(file string) string {
 func writeManifest(manifest Manifest, directory string) error {
 	file, _ := json.MarshalIndent(manifest, "", " ")
 	filename := directory + "/s3s2_manifest.json"
-	fmt.Println(filename)
+	log.Debug(filename)
 	ioutil.WriteFile(filename, file, 0644)
 	return nil
 }

@@ -18,10 +18,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 
 	uuid "github.com/satori/go.uuid"
 	"golang.org/x/crypto/openpgp"
@@ -35,7 +36,7 @@ import (
 // Encrypt the file with public key provided.
 func Encrypt(filename string, pubkey string) {
 	key := getKey(pubkey)
-	log.Println("Public key:", key)
+	log.Info("Public key:", key)
 
 	// Read in public key
 	recipient, err := readEntity(key)
@@ -46,14 +47,14 @@ func Encrypt(filename string, pubkey string) {
 
 	f, err := os.Open(filename)
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 		return
 	}
 	defer f.Close()
 
 	dst, err := os.Create(filename + ".gpg")
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 		return
 	}
 	defer dst.Close()
@@ -64,12 +65,12 @@ func getKey(keypath string) string {
 	if isValidURL(keypath) {
 		resp, err := http.Get(keypath)
 		if err != nil {
-			panic(err)
+			log.Panic(err)
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			panic(err)
+			log.Panic(err)
 		}
 		fnuuid, _ := uuid.NewV4()
 		fn := "s3s2_" + fnuuid.String() + ".asc"

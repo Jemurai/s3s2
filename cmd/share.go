@@ -15,8 +15,9 @@
 package cmd
 
 import (
-	"fmt"
-	"log"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
@@ -44,23 +45,38 @@ that it will be encrypted.`,
 		checkOptions(options)
 		m := manifest.BuildManifest(options)
 
+		start := time.Now()
 		var filez []string
 		for i := 0; i < len(m.Files); i++ {
 			filez = append(filez, m.Files[i].Name)
-			fmt.Println(m.Files[i].Name, m.Files[i].Hash) // This is just debug.
+			log.Debug(m.Files[i].Name, m.Files[i].Hash) // This is just debug.
 		}
 		fnuuid, _ := uuid.NewV4()
 		fn := "s3s2_" + fnuuid.String() + ".zip"
 		archive.ZipFiles(fn, filez)
+		// archive.ZstdFiles(fn, filez)
+		archive := time.Now()
+		elapsed := archive.Sub(start)
+		log.Debugf("Archive time: %f\n", elapsed.Seconds())
 
 		if options.PubKey != "" {
 			encrypt.Encrypt(fn, options.PubKey)
 			fn = fn + ".gpg"
 		}
+		encrypt := time.Now()
+		elapsed = encrypt.Sub(archive)
+		log.Debugf("Encrypt time: %f\n", elapsed.Seconds())
+
 		err := s3helper.UploadFile(fn, options)
 		if err != nil {
 			log.Fatal(err)
 		}
+		upload := time.Now()
+		elapsed = upload.Sub(encrypt)
+		log.Debugf("Upload time: %f\n", elapsed.Seconds())
+
+		total := upload.Sub(start)
+		log.Debugf("Total time: %f\n", total.Seconds())
 	},
 }
 
@@ -85,8 +101,8 @@ func buildOptions(cmd *cobra.Command) options.Options {
 		Prefix:    prefix,
 	}
 
-	fmt.Println("Captured options: ")
-	fmt.Print(options)
+	log.Debug("Captured options: ")
+	log.Debug(options)
 
 	return options
 }
@@ -95,8 +111,8 @@ func checkOptions(options options.Options) {
 	if options.AwsKey != "" || options.PubKey != "" {
 		// OK, that's good.  Looks like we have a key.
 	} else {
-		fmt.Println("Need to supply either AWS Key for S3 level encryption or a public key for GPG encryption or both!")
-		panic("Insufficient key material to perform safe encryption.")
+		log.Warn("Need to supply either AWS Key for S3 level encryption or a public key for GPG encryption or both!")
+		log.Panic("Insufficient key material to perform safe encryption.")
 	}
 }
 
@@ -123,4 +139,6 @@ func init() {
 	viper.BindPFlag("pubkey", shareCmd.PersistentFlags().Lookup("pubkey"))
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
 
+	log.SetFormatter(&log.JSONFormatter{})
+	log.SetLevel(log.DebugLevel)
 }

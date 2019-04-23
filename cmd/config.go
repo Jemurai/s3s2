@@ -21,6 +21,7 @@ import (
 	"os/user"
 
 	"github.com/jemurai/s3s2/options"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/c-bata/go-prompt"
 	"github.com/spf13/cobra"
@@ -63,10 +64,10 @@ var configCmd = &cobra.Command{
 		data, _ := json.MarshalIndent(bc, "", " ")
 		err := ioutil.WriteFile(fn, data, 0644)
 		if err != nil {
-			fmt.Println(err)
-			panic(err)
+			log.Warn(err)
+			log.Panic(err)
 		} else {
-			fmt.Println("Your config was written to", fn, ". You can invoke with s3s2 --config", fn)
+			log.Info("Your config was written to", fn, ". You can invoke with s3s2 --config", fn)
 		}
 	},
 }

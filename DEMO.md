@@ -14,3 +14,7 @@
 1. GPG decrypt
 1. Run `s3s2 share --bucket s3s2-demo --directory ~/Desktop/s3s2/ --awskey 933c...9d9 --region us-east-1 --pubkey https://s3s2.jemurai.com/.well_known/s3s2-pub.asc` (Succeed)
 1. Run `s3s2 share`
+
+## Cleanup
+
+1. `aws-vault exec jemurai-mkonda-admin -- aws s3 rm s3://s3s2-demo/ --recursive`

@@ -19,6 +19,7 @@ import (
 	"os"
 
 	options "github.com/jemurai/s3s2/options"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -31,7 +32,7 @@ import (
 // IFF there is a key or the file has been gpg encrypted
 // for the receiver.
 func UploadFile(filename string, options options.Options) error {
-	fmt.Printf("Uploading file.")
+	log.Debug("Uploading file.")
 
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(options.Region),
@@ -55,7 +56,7 @@ func UploadFile(filename string, options options.Options) error {
 		if err != nil {
 			return fmt.Errorf("failed to upload file, %v", err)
 		}
-		fmt.Printf("file uploaded to, %s\n", result.Location)
+		log.Debugf("file uploaded to, %s\n", result.Location)
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(options.Bucket),
@@ -65,7 +66,7 @@ func UploadFile(filename string, options options.Options) error {
 		if err != nil {
 			return fmt.Errorf("failed to upload file, %v", err)
 		}
-		fmt.Printf("file uploaded to, %s\n", result.Location)
+		log.Debugf("file uploaded to, %s\n", result.Location)
 	}
 	return nil
 }
