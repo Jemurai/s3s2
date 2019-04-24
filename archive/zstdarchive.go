@@ -25,6 +25,13 @@ import (
 
 // ZstdFile archives the provided file.
 func ZstdFile(filename string) string {
+
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Error(err)
+	}
+	defer file.Close()
+
 	zfilename := filename + ".zst"
 	newZstdFile, err := os.Create(zfilename)
 	if err != nil {
@@ -33,17 +40,12 @@ func ZstdFile(filename string) string {
 	defer newZstdFile.Close()
 
 	zWriter := zstd.NewWriter(newZstdFile)
-	defer zWriter.Release()
+	defer zWriter.Close()
 
-	file, err := os.Open(filename)
-	if err != nil {
+	if count, err := io.Copy(zWriter, file); err != nil {
 		log.Error(err)
+	} else {
+		log.Debugf("\tWrote bytes %d", count)
 	}
-	defer file.Close()
-
-	if _, err = io.Copy(zWriter, file); err != nil {
-		log.Error(err)
-	}
-
 	return zfilename
 }

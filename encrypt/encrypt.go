@@ -36,7 +36,7 @@ import (
 // Encrypt the file with public key provided.
 func Encrypt(filename string, pubkey string) {
 	key := getKey(pubkey)
-	log.Info("Public key:", key)
+	log.Debugf("\tPublic key:", key)
 
 	// Read in public key
 	recipient, err := readEntity(key)

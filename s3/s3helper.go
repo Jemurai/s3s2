@@ -32,7 +32,7 @@ import (
 // IFF there is a key or the file has been gpg encrypted
 // for the receiver.
 func UploadFile(folder string, filename string, options options.Options) error {
-	log.Debug("Uploading file.")
+	log.Debugf("\tUploading file.")
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(options.Region),
 	}))
@@ -55,7 +55,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 		if err != nil {
 			return fmt.Errorf("failed to upload file, %v", err)
 		}
-		log.Debugf("file uploaded to, %s\n", result.Location)
+		log.Debugf("\tFile uploaded to, %s\n", result.Location)
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(options.Bucket),
@@ -65,7 +65,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 		if err != nil {
 			return fmt.Errorf("failed to upload file, %v", err)
 		}
-		log.Debugf("file uploaded to, %s\n", result.Location)
+		log.Debugf("\tFile uploaded to, %s\n", result.Location)
 	}
 	return nil
 }

@@ -41,6 +41,7 @@ either GPG encrypted or passes S3 headers indicating
 that it will be encrypted.`,
 
 	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
 		options := buildOptions(cmd)
 		checkOptions(options)
 		m := manifest.BuildManifest(options)
@@ -52,21 +53,30 @@ that it will be encrypted.`,
 		}
 		for i := 0; i < len(m.Files); i++ {
 			fn := m.Files[i].Name
-			// fn = archive.ZstdFile(fn)
-			fn = archive.ZipFile(fn)
-			log.Debugf("Zstd compressing file: %s", fn)
-			if options.PubKey != "" {
-				encrypt.Encrypt(fn, options.PubKey)
-				fn = fn + ".gpg"
-			}
-			err := s3helper.UploadFile(folder, fn, options)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			log.Debug(m.Files[i].Name, m.Files[i].Hash) // This is just debug.
+			processFile(folder, fn, options)
 		}
+		timing(start, "Elasped time: %f")
 	},
+}
+
+func processFile(folder string, fn string, options options.Options) {
+	log.Debugf("Processing %s", fn)
+	start := time.Now()
+	fn = archive.ZstdFile(fn)
+	//fn = archive.ZipFile(fn)
+	archiveTime := timing(start, "\tArchive time (sec): %f")
+	log.Debugf("\tZstd compressing file: %s", fn)
+	if options.PubKey != "" {
+		encrypt.Encrypt(fn, options.PubKey)
+		fn = fn + ".gpg"
+	}
+	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
+	err := s3helper.UploadFile(folder, fn, options)
+	if err != nil {
+		log.Fatal(err)
+	}
+	timing(encryptTime, "\tUpload time (sec): %f")
+	log.Debugf("\tProcessed %s", fn)
 }
 
 func timing(start time.Time, message string) time.Time {
