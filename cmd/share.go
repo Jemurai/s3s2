@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -42,19 +43,25 @@ that it will be encrypted.`,
 
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
-		options := buildOptions(cmd)
-		checkOptions(options)
-		m := manifest.BuildManifest(options)
+		opts := buildOptions(cmd)
+		checkOptions(opts)
+		m := manifest.BuildManifest(opts)
 		fnuuid, _ := uuid.NewV4()
-		folder := options.Prefix + "_s3s2_" + fnuuid.String() + "/"
+		folder := opts.Prefix + "_s3s2_" + fnuuid.String() + "/"
 
-		if err := s3helper.UploadFile(folder, m.Name, options); err != nil {
+		if err := s3helper.UploadFile(folder, m.Name, opts); err != nil {
 			log.Error(err)
 		}
+		var wg sync.WaitGroup
 		for i := 0; i < len(m.Files); i++ {
+			wg.Add(1)
 			fn := m.Files[i].Name
-			processFile(folder, fn, options)
+			go func(folder string, fn string, opts options.Options) {
+				defer wg.Done()
+				processFile(folder, fn, opts)
+			}(folder, fn, opts)
 		}
+		wg.Wait()
 		timing(start, "Elasped time: %f")
 	},
 }
