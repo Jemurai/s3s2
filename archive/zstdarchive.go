@@ -17,7 +17,7 @@ package archive
 import (
 	"io"
 
-	"github.com/johnnadratowski/golang-neo4j-bolt-driver/log"
+	log "github.com/sirupsen/logrus"
 	zstd "github.com/valyala/gozstd"
 
 	"os"
