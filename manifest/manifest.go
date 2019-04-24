@@ -69,7 +69,7 @@ func BuildManifest(options options.Options) Manifest {
 
 	user, err := user.Current()
 	sudoUser := os.Getenv("SUDO_USER") // In case they are sudo'ing, we can know the acting user.
-	manifest := Manifest{"Manifest", time.Now(), options.Org, user.Name, user.Username, sudoUser, files}
+	manifest := Manifest{options.Directory + "/s3s2_manifest.json", time.Now(), options.Org, user.Name, user.Username, sudoUser, files}
 	writeManifest(manifest, options.Directory)
 	return manifest
 }

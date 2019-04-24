@@ -44,40 +44,36 @@ that it will be encrypted.`,
 		options := buildOptions(cmd)
 		checkOptions(options)
 		m := manifest.BuildManifest(options)
+		fnuuid, _ := uuid.NewV4()
+		folder := options.Prefix + "_s3s2_" + fnuuid.String() + "/"
 
-		start := time.Now()
-		var filez []string
+		if err := s3helper.UploadFile(folder, m.Name, options); err != nil {
+			log.Error(err)
+		}
 		for i := 0; i < len(m.Files); i++ {
-			filez = append(filez, m.Files[i].Name)
+			fn := m.Files[i].Name
+			// fn = archive.ZstdFile(fn)
+			fn = archive.ZipFile(fn)
+			log.Debugf("Zstd compressing file: %s", fn)
+			if options.PubKey != "" {
+				encrypt.Encrypt(fn, options.PubKey)
+				fn = fn + ".gpg"
+			}
+			err := s3helper.UploadFile(folder, fn, options)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			log.Debug(m.Files[i].Name, m.Files[i].Hash) // This is just debug.
 		}
-		fnuuid, _ := uuid.NewV4()
-		fn := "s3s2_" + fnuuid.String() + ".zip"
-		archive.ZipFiles(fn, filez)
-		// archive.ZstdFiles(fn, filez)
-		archive := time.Now()
-		elapsed := archive.Sub(start)
-		log.Debugf("Archive time: %f\n", elapsed.Seconds())
-
-		if options.PubKey != "" {
-			encrypt.Encrypt(fn, options.PubKey)
-			fn = fn + ".gpg"
-		}
-		encrypt := time.Now()
-		elapsed = encrypt.Sub(archive)
-		log.Debugf("Encrypt time: %f\n", elapsed.Seconds())
-
-		err := s3helper.UploadFile(fn, options)
-		if err != nil {
-			log.Fatal(err)
-		}
-		upload := time.Now()
-		elapsed = upload.Sub(encrypt)
-		log.Debugf("Upload time: %f\n", elapsed.Seconds())
-
-		total := upload.Sub(start)
-		log.Debugf("Total time: %f\n", total.Seconds())
 	},
+}
+
+func timing(start time.Time, message string) time.Time {
+	current := time.Now()
+	elapsed := current.Sub(start)
+	log.Debugf(message, elapsed.Seconds())
+	return current
 }
 
 // buildContext sets up the ShareContext we're going to use
@@ -101,6 +97,10 @@ func buildOptions(cmd *cobra.Command) options.Options {
 		Prefix:    prefix,
 	}
 
+	debug := viper.GetBool("debug")
+	if debug != true {
+		log.SetLevel(log.InfoLevel)
+	}
 	log.Debug("Captured options: ")
 	log.Debug(options)
 
@@ -130,15 +130,19 @@ func init() {
 	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path.")
 	shareCmd.PersistentFlags().String("pubkey", "", "The receiver's public key.  A link or a local file path.")
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
+	shareCmd.PersistentFlags().Bool("debug", false, "Debug mode?")
 
 	viper.BindPFlag("bucket", shareCmd.PersistentFlags().Lookup("bucket"))
 	viper.BindPFlag("region", shareCmd.PersistentFlags().Lookup("region"))
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
-	viper.BindPFlag("prefex", shareCmd.PersistentFlags().Lookup("prefix"))
+	viper.BindPFlag("prefix", shareCmd.PersistentFlags().Lookup("prefix"))
 	viper.BindPFlag("pubkey", shareCmd.PersistentFlags().Lookup("pubkey"))
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
+	viper.BindPFlag("debug", shareCmd.PersistentFlags().Lookup("debug"))
 
-	log.SetFormatter(&log.JSONFormatter{})
+	//log.SetFormatter(&log.JSONFormatter{})
+	log.SetFormatter(&log.TextFormatter{})
 	log.SetLevel(log.DebugLevel)
+
 }

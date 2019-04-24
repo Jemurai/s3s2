@@ -15,32 +15,35 @@
 package archive
 
 import (
+	"io"
+
+	"github.com/johnnadratowski/golang-neo4j-bolt-driver/log"
 	zstd "github.com/valyala/gozstd"
 
 	"os"
 )
 
-// ZstdFiles archives the provided list of files into a Zstd file.
-func ZstdFiles(filename string, files []string) error {
-
-	newZstdFile, err := os.Create(filename)
+// ZstdFile archives the provided file.
+func ZstdFile(filename string) string {
+	zfilename := filename + ".zst"
+	newZstdFile, err := os.Create(zfilename)
 	if err != nil {
-		return err
+		log.Error(err)
 	}
 	defer newZstdFile.Close()
 
 	zWriter := zstd.NewWriter(newZstdFile)
 	defer zWriter.Release()
 
-	// Add files to zip
-	for _, file := range files {
-
-		zfile, err := os.Open(file)
-		if err != nil {
-			return err
-		}
-		defer zfile.Close()
-
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Error(err)
 	}
-	return nil
+	defer file.Close()
+
+	if _, err = io.Copy(zWriter, file); err != nil {
+		log.Error(err)
+	}
+
+	return zfilename
 }
