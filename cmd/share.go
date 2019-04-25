@@ -43,8 +43,8 @@ that it will be encrypted.`,
 
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
-		opts := buildOptions(cmd)
-		checkOptions(opts)
+		opts := buildShareOptions(cmd)
+		checkShareOptions(opts)
 		m := manifest.BuildManifest(opts)
 		fnuuid, _ := uuid.NewV4()
 		folder := opts.Prefix + "_s3s2_" + fnuuid.String() + "/"
@@ -95,7 +95,7 @@ func timing(start time.Time, message string) time.Time {
 
 // buildContext sets up the ShareContext we're going to use
 // to keep track of our state while we go.
-func buildOptions(cmd *cobra.Command) options.Options {
+func buildShareOptions(cmd *cobra.Command) options.Options {
 	directory := viper.GetString("directory")
 	bucket := viper.GetString("bucket")
 	region := viper.GetString("region")
@@ -124,7 +124,7 @@ func buildOptions(cmd *cobra.Command) options.Options {
 	return options
 }
 
-func checkOptions(options options.Options) {
+func checkShareOptions(options options.Options) {
 	if options.AwsKey != "" || options.PubKey != "" {
 		// OK, that's good.  Looks like we have a key.
 	} else {
@@ -136,10 +136,6 @@ func checkOptions(options options.Options) {
 func init() {
 	rootCmd.AddCommand(shareCmd)
 
-	shareCmd.PersistentFlags().String("bucket", "", "The bucket to share the file to.")
-	shareCmd.MarkFlagRequired("bucket")
-	shareCmd.PersistentFlags().String("region", "", "The region the S3 bucket is in. Ex: us-east-1")
-	shareCmd.MarkFlagRequired("region")
 	shareCmd.PersistentFlags().String("directory", "", "The directory to zip, encrypt and share.")
 	shareCmd.MarkFlagRequired("directory")
 	shareCmd.PersistentFlags().String("org", "", "The organization that owns the files.")
@@ -147,16 +143,12 @@ func init() {
 	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path.")
 	shareCmd.PersistentFlags().String("pubkey", "", "The receiver's public key.  A link or a local file path.")
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
-	shareCmd.PersistentFlags().Bool("debug", false, "Debug mode?")
 
-	viper.BindPFlag("bucket", shareCmd.PersistentFlags().Lookup("bucket"))
-	viper.BindPFlag("region", shareCmd.PersistentFlags().Lookup("region"))
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
 	viper.BindPFlag("prefix", shareCmd.PersistentFlags().Lookup("prefix"))
 	viper.BindPFlag("pubkey", shareCmd.PersistentFlags().Lookup("pubkey"))
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
-	viper.BindPFlag("debug", shareCmd.PersistentFlags().Lookup("debug"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})

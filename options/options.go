@@ -2,11 +2,19 @@ package options
 
 // Options is the information we need about a particular sharing activity.
 type Options struct {
-	Directory string `json:"directory"`
-	Bucket    string `json:"bucket"`
-	Region    string `json:"region"`
+	// For both encrypt/decrypt
+	Region string `json:"region"`
+	Bucket string `json:"bucket"`
+
+	// Encrypt only
 	PubKey    string `json:"pubkey"`
+	Directory string `json:"directory"`
 	AwsKey    string `json:"awskey"`
 	Org       string `json:"org"`
 	Prefix    string `json:"prefix"`
+
+	// Decrypt only
+	File        string `json:"file"`
+	Destination string `json:"destination"`
+	PrivKey     string `json:"privkey"`
 }

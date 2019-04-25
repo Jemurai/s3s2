@@ -17,12 +17,14 @@ package s3
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	options "github.com/jemurai/s3s2/options"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
@@ -68,4 +70,35 @@ func UploadFile(folder string, filename string, options options.Options) error {
 		log.Debugf("\tFile uploaded to, %s\n", result.Location)
 	}
 	return nil
+}
+
+// DownloadFile function to download a file from S3.
+func DownloadFile(directory string, options options.Options) (string, error) {
+	log.Debugf("\tDownloading file.")
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(options.Region),
+	}))
+
+	downloader := s3manager.NewDownloader(sess)
+
+	filename := directory + options.File
+	dirname := filepath.Dir(filename)
+	os.MkdirAll(dirname, os.ModePerm)
+	file, err := os.Create(filename)
+	if err != nil {
+		return "", fmt.Errorf("Unable to open file %q, %v", filename, err)
+	}
+	defer file.Close()
+
+	numBytes, err := downloader.Download(file,
+		&s3.GetObjectInput{
+			Bucket: aws.String(options.Bucket),
+			Key:    aws.String(options.File),
+		})
+	if err != nil {
+		log.Errorf("Unable to download item %q, %v", filename, err)
+	}
+	log.Debugf("\tDownloaded %s of %d bytes", file.Name, numBytes)
+
+	return file.Name(), nil
 }

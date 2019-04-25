@@ -1,0 +1,132 @@
+// Copyright © 2019 NAME HERE <EMAIL ADDRESS>
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package cmd
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	archive "github.com/jemurai/s3s2/archive"
+	options "github.com/jemurai/s3s2/options"
+	s3helper "github.com/jemurai/s3s2/s3"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+var ops options.Options
+
+// decryptCmd represents the decrypt command
+var decryptCmd = &cobra.Command{
+	Use:   "decrypt",
+	Short: "Retrieve files that are stored securely in S3 and decrypt them",
+	Long:  `Retrieve files that are stored securely in S3 and decrypt them`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Print("In decrypt")
+		start := time.Now()
+		opts := buildDecryptOptions()
+		//checkDecryptOptions(opts)
+
+		if opts.File != "s3s2_manifest.json" {
+			decryptFile(opts)
+		}
+		timing(start, "Elasped time: %f")
+	},
+}
+
+func decryptFile(options options.Options) {
+	log.Debugf("Processing %s", options.File)
+	start := time.Now()
+
+	fn, err := s3helper.DownloadFile(options.Destination, options)
+	if err != nil {
+		log.Fatal(err)
+	}
+	downloadTime := timing(start, "\tDownload time (sec): %f")
+
+	fn = archive.UnZstdFile(fn)
+	log.Debugf("\tZstd decompressing file: %s", fn)
+	archiveTime := timing(downloadTime, "\tDecompress time (sec): %f")
+
+	if options.PrivKey != "" {
+		log.Debug("Would be decrypting here...")
+		//encrypt.Decrypt(fn, options.PrivKey)
+		timing(archiveTime, "\tEncrypt time (sec): %f")
+	}
+	log.Debugf("\tProcessed %s", fn)
+}
+
+func buildDecryptOptions() options.Options {
+	bucket := viper.GetString("bucket")
+	fmt.Print("Building options : " + bucket)
+	file := viper.GetString("file")
+	destination := viper.GetString("destination")
+	if !strings.HasSuffix(destination, "/") {
+		destination = destination + "/"
+	}
+	region := viper.GetString("region")
+	privKey := viper.GetString("privkey")
+
+	options := options.Options{
+		Bucket:      bucket,
+		File:        file,
+		Destination: destination,
+		Region:      region,
+		PrivKey:     privKey,
+	}
+
+	debug := viper.GetBool("debug")
+	if debug != true {
+		log.Debug("Setting Debug in Decrypt")
+		log.SetLevel(log.DebugLevel)
+	}
+	log.Debug("Captured options: ")
+	log.Debug(options)
+	return options
+}
+
+func checkDecryptOptions(options options.Options) {
+	if options.File == "" {
+		log.Warn("Need to supply a file to decrypt.  Should be the file path within the dbucket but not including the dbucket.")
+		log.Panic("Insufficient information to perform decryption.")
+	} else if options.Bucket == "" {
+		log.Warn("Need to supply a bucket.")
+		log.Panic("Insufficient information to perform decryption.")
+	} else if options.Destination == "" {
+		log.Warn("Need to supply a destination for the files to decrypt.  Should be a local path.")
+		log.Panic("Insufficient information to perform decryption.")
+	} else if options.Region == "" {
+		log.Warn("Need to supply a region for the S3 bucket.")
+		log.Panic("Insufficient information to perform decryption.")
+	}
+}
+
+func init() {
+	rootCmd.AddCommand(decryptCmd)
+
+	decryptCmd.PersistentFlags().String("file", "", "The path to the file to decrypt.  Can be manifest or single file.")
+	decryptCmd.MarkFlagRequired("file")
+	decryptCmd.PersistentFlags().String("destination", "", "The destination directory to decrypt and unzip.")
+	decryptCmd.MarkFlagRequired("destination")
+	decryptCmd.PersistentFlags().String("privkey", "", "The receiver's private key.  A local file path.")
+
+	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
+	viper.BindPFlag("destination", decryptCmd.PersistentFlags().Lookup("destination"))
+	viper.BindPFlag("privkey", decryptCmd.PersistentFlags().Lookup("privkey"))
+
+	//log.SetFormatter(&log.JSONFormatter{})
+	log.SetFormatter(&log.TextFormatter{})
+}

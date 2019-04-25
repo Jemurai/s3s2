@@ -73,6 +73,7 @@ func BuildManifest(options options.Options) Manifest {
 }
 
 func hash(file string) string {
+	start := time.Now()
 	/*
 		hasher := sha256.New()
 		s, err := ioutil.ReadFile(file)
@@ -80,8 +81,11 @@ func hash(file string) string {
 		if err != nil {
 			log.Fatal(err)
 		}
-		return hex.EncodeToString(hasher.Sum(nil))
 	*/
+	current := time.Now()
+	elapsed := current.Sub(start)
+	log.Debugf("\tTime to hash %s : %f", file, elapsed)
+	//	return hex.EncodeToString(hasher.Sum(nil))
 	return "fake-hash"
 }
 

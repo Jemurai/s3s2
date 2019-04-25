@@ -16,6 +16,8 @@ package archive
 
 import (
 	"io"
+	"path/filepath"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	zstd "github.com/valyala/gozstd"
@@ -48,4 +50,32 @@ func ZstdFile(filename string) string {
 		log.Debugf("\tWrote bytes %d", count)
 	}
 	return zfilename
+}
+
+// UnZstdFile uncompresses and archive
+func UnZstdFile(filename string) string {
+
+	zfile, err := os.Open(filename)
+	if err != nil {
+		log.Error(err)
+	}
+	defer zfile.Close()
+
+	zReader := zstd.NewReader(zfile)
+	defer zReader.Release()
+
+	fn := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+	newFile, err := os.Create(fn)
+	if err != nil {
+		log.Error(err)
+	}
+	defer newFile.Close()
+
+	if count, err := io.Copy(newFile, zReader); err != nil {
+		log.Error(err)
+	} else {
+		log.Debugf("\tWrote bytes %d", count)
+	}
+	return fn
 }

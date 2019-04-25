@@ -24,6 +24,9 @@ import (
 )
 
 var cfgFile string
+var debug bool
+var bucket string
+var region string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -53,10 +56,22 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.s3s2.yaml)")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "debug mode")
+	rootCmd.PersistentFlags().StringVar(&bucket, "bucket", "", "The bucket to work with.")
+	rootCmd.PersistentFlags().StringVar(&region, "region", "", "The region the bucket is in.")
+
+	viper.BindPFlag("bucket", rootCmd.PersistentFlags().Lookup("bucket"))
+	viper.BindPFlag("region", rootCmd.PersistentFlags().Lookup("region"))
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	if debug {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
+
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)

@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -32,6 +34,39 @@ import (
 
 // Possible reference...
 // https://gist.github.com/ayubmalik/a83ee23c7c700cdce2f8c5bf5f2e9f20
+//
+// https://gist.github.com/stuart-warren/93750a142d3de4e8fdd2
+// https://play.golang.org/p/vk58yYArMh
+
+// Decrypt a file with a provided key.
+func Decrypt(filename string, privkey string) {
+	key := getKey(privkey)
+	log.Debugf("Private key:", key)
+
+	// Read in private key
+	recipient, err := readEntity(key)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	inf, err := os.Open(filename)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	defer inf.Close()
+
+	fn := strings.TrimSuffix(filename, filepath.Ext(filename))
+	dst, err := os.Create(fn)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	defer dst.Close()
+
+	decrypt([]*openpgp.Entity{recipient}, nil, inf, dst)
+}
 
 // Encrypt the file with public key provided.
 func Encrypt(filename string, pubkey string) {
@@ -93,6 +128,15 @@ func encrypt(recip []*openpgp.Entity, signer *openpgp.Entity, r io.Reader, w io.
 	return wc.Close()
 }
 
+func decrypt(recip []*openpgp.Entity, signer *openpgp.Entity, r io.Reader, w io.Writer) error {
+	/*
+		passphraseBytes := []byte("hi")
+		recip.PrivateKey.Decrypt(passphraseBytes)
+		openpgp.ReadMessage(r, recip, nil, nil)
+	*/
+	return nil
+}
+
 func readEntity(name string) (*openpgp.Entity, error) {
 	f, err := os.Open(name)
 	if err != nil {
@@ -110,7 +154,6 @@ func isValidURL(toTest string) bool {
 	_, err := url.ParseRequestURI(toTest)
 	if err != nil {
 		return false
-	} else {
-		return true
 	}
+	return true
 }
