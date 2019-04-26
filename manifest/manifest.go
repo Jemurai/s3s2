@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -44,18 +45,34 @@ type Manifest struct {
 	Username     string
 	User         string
 	SudoUser     string
+	Folder       string
 	Files        []FileDescription
 }
 
+// ReadManifest from a file.
+func ReadManifest(file string) Manifest {
+	var m Manifest
+	rfile, err := os.Open(file)
+	if err != nil {
+		log.Error(err)
+	}
+	bytes, err := ioutil.ReadAll(rfile)
+	if err != nil {
+		log.Error(err)
+	}
+	json.Unmarshal(bytes, &m)
+	return m
+}
+
 // BuildManifest builds a manifest from a directory.
-func BuildManifest(options options.Options) Manifest {
+func BuildManifest(folder string, options options.Options) Manifest {
 	var files []FileDescription
 	err := filepath.Walk(options.Directory,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			if !info.IsDir() {
+			if !info.IsDir() && !strings.HasSuffix(path, "manifest.json") {
 				sha256hash := hash(path)
 				files = append(files, FileDescription{path, info.Size(), info.ModTime(), sha256hash})
 			}
@@ -67,7 +84,17 @@ func BuildManifest(options options.Options) Manifest {
 
 	user, err := user.Current()
 	sudoUser := os.Getenv("SUDO_USER") // In case they are sudo'ing, we can know the acting user.
-	manifest := Manifest{options.Directory + "/s3s2_manifest.json", time.Now(), options.Org, user.Name, user.Username, sudoUser, files}
+	manifest := Manifest{
+		Name:         filepath.Clean(options.Directory + "/s3s2_manifest.json"),
+		Timestamp:    time.Now(),
+		Organization: options.Org,
+		Username:     user.Name,
+		User:         user.Username,
+		SudoUser:     sudoUser,
+		Folder:       folder,
+		Files:        files,
+	}
+
 	writeManifest(manifest, options.Directory)
 	return manifest
 }

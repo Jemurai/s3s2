@@ -16,12 +16,17 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	archive "github.com/jemurai/s3s2/archive"
+	"github.com/jemurai/s3s2/encrypt"
+	manifest "github.com/jemurai/s3s2/manifest"
 	options "github.com/jemurai/s3s2/options"
 	s3helper "github.com/jemurai/s3s2/s3"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,34 +43,55 @@ var decryptCmd = &cobra.Command{
 		fmt.Print("In decrypt")
 		start := time.Now()
 		opts := buildDecryptOptions()
-		//checkDecryptOptions(opts)
+		checkDecryptOptions(opts)
 
-		if opts.File != "s3s2_manifest.json" {
-			decryptFile(opts)
+		if strings.HasSuffix(opts.File, "manifest.json") {
+			fn, err := s3helper.DownloadFile(opts.Destination, opts.File, opts)
+			if err != nil {
+				log.Error(err)
+			}
+
+			m := manifest.ReadManifest(fn)
+			var wg sync.WaitGroup
+			for i := 0; i < len(m.Files); i++ {
+				if !strings.HasSuffix(m.Files[i].Name, "manifest.json") {
+					wg.Add(1)
+					f := filepath.Clean(m.Folder + "/" + m.Files[i].Name + ".zst.gpg")
+					go func(f string, opts options.Options) {
+						defer wg.Done()
+						decryptFile(f, opts)
+					}(f, opts)
+				}
+			}
+			wg.Wait()
+		} else {
+			decryptFile(opts.File, opts)
 		}
 		timing(start, "Elasped time: %f")
 	},
 }
 
-func decryptFile(options options.Options) {
-	log.Debugf("Processing %s", options.File)
+func decryptFile(file string, options options.Options) {
+	log.Debugf("Processing %s", file)
 	start := time.Now()
 
-	fn, err := s3helper.DownloadFile(options.Destination, options)
+	fn, err := s3helper.DownloadFile(options.Destination, file, options)
 	if err != nil {
 		log.Fatal(err)
 	}
 	downloadTime := timing(start, "\tDownload time (sec): %f")
 
+	encryptTime := time.Now()
+	if options.PrivKey != "" && strings.HasSuffix(file, ".gpg") {
+		log.Debug("Would be decrypting here...")
+		encrypt.Decrypt(fn, options.PubKey, options.PrivKey)
+		encryptTime = timing(downloadTime, "\tEncrypt time (sec): %f")
+	}
+
 	fn = archive.UnZstdFile(fn)
 	log.Debugf("\tZstd decompressing file: %s", fn)
-	archiveTime := timing(downloadTime, "\tDecompress time (sec): %f")
-
-	if options.PrivKey != "" {
-		log.Debug("Would be decrypting here...")
-		//encrypt.Decrypt(fn, options.PrivKey)
-		timing(archiveTime, "\tEncrypt time (sec): %f")
-	}
+	timing(encryptTime, "\tDecompress time (sec): %f")
+	timing(start, "Total time: %f")
 	log.Debugf("\tProcessed %s", fn)
 }
 
@@ -79,6 +105,7 @@ func buildDecryptOptions() options.Options {
 	}
 	region := viper.GetString("region")
 	privKey := viper.GetString("privkey")
+	pubKey := viper.GetString("pubkey")
 
 	options := options.Options{
 		Bucket:      bucket,
@@ -86,6 +113,7 @@ func buildDecryptOptions() options.Options {
 		Destination: destination,
 		Region:      region,
 		PrivKey:     privKey,
+		PubKey:      pubKey,
 	}
 
 	debug := viper.GetBool("debug")

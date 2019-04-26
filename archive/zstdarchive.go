@@ -55,6 +55,10 @@ func ZstdFile(filename string) string {
 // UnZstdFile uncompresses and archive
 func UnZstdFile(filename string) string {
 
+	if !strings.HasSuffix(filename, ".zst") {
+		return filename
+	}
+
 	zfile, err := os.Open(filename)
 	if err != nil {
 		log.Error(err)

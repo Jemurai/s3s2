@@ -15,6 +15,11 @@
 package encrypt
 
 import (
+	"compress/gzip"
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -22,7 +27,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -37,35 +42,12 @@ import (
 //
 // https://gist.github.com/stuart-warren/93750a142d3de4e8fdd2
 // https://play.golang.org/p/vk58yYArMh
+// https://github.com/jchavannes/go-pgp/blob/master/pgp/encrypt.go
+// https://gist.github.com/eliquious/9e96017f47d9bd43cdf9
 
 // Decrypt a file with a provided key.
-func Decrypt(filename string, privkey string) {
-	key := getKey(privkey)
-	log.Debugf("Private key:", key)
-
-	// Read in private key
-	recipient, err := readEntity(key)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	inf, err := os.Open(filename)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	defer inf.Close()
-
-	fn := strings.TrimSuffix(filename, filepath.Ext(filename))
-	dst, err := os.Create(fn)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	defer dst.Close()
-
-	decrypt([]*openpgp.Entity{recipient}, nil, inf, dst)
+func Decrypt(filename string, pubkey string, privkey string) {
+	decryptFile(pubkey, privkey, filename)
 }
 
 // Encrypt the file with public key provided.
@@ -128,15 +110,6 @@ func encrypt(recip []*openpgp.Entity, signer *openpgp.Entity, r io.Reader, w io.
 	return wc.Close()
 }
 
-func decrypt(recip []*openpgp.Entity, signer *openpgp.Entity, r io.Reader, w io.Writer) error {
-	/*
-		passphraseBytes := []byte("hi")
-		recip.PrivateKey.Decrypt(passphraseBytes)
-		openpgp.ReadMessage(r, recip, nil, nil)
-	*/
-	return nil
-}
-
 func readEntity(name string) (*openpgp.Entity, error) {
 	f, err := os.Open(name)
 	if err != nil {
@@ -156,4 +129,336 @@ func isValidURL(toTest string) bool {
 		return false
 	}
 	return true
+}
+
+func decodePrivateKey(filename string) *packet.PrivateKey {
+
+	// open ascii armored private key
+	in, err := os.Open(filename)
+	if err != nil {
+		log.Error(err)
+	}
+	defer in.Close()
+
+	block, err := armor.Decode(in)
+	if err != nil {
+		log.Error(err)
+	}
+
+	if block.Type != openpgp.PrivateKeyType {
+		log.Error("Invalid private key file")
+	}
+
+	reader := packet.NewReader(block.Body)
+	pkt, err := reader.Next()
+	if err != nil {
+		log.Error(err)
+	}
+
+	key, ok := pkt.(*packet.PrivateKey)
+	if !ok {
+		log.Error("Invalid private key")
+	}
+	return key
+}
+
+func decodePublicKey(filename string) *packet.PublicKey {
+
+	// open ascii armored public key
+	in, err := os.Open(filename)
+	if err != nil {
+		log.Error(err)
+	}
+	defer in.Close()
+
+	block, err := armor.Decode(in)
+	if err != nil {
+		log.Error(err)
+	}
+
+	if block.Type != openpgp.PublicKeyType {
+		log.Error("Invalid private key file")
+	}
+
+	reader := packet.NewReader(block.Body)
+	pkt, err := reader.Next()
+	if err != nil {
+		log.Error(err)
+	}
+
+	key, ok := pkt.(*packet.PublicKey)
+	if !ok {
+		log.Error("Invalid public key")
+	}
+	return key
+}
+
+func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) *openpgp.Entity {
+	config := packet.Config{
+		DefaultHash:            crypto.SHA256,
+		DefaultCipher:          packet.CipherAES256,
+		DefaultCompressionAlgo: packet.CompressionNone, // We already zstd'd it.
+		//		DefaultCompressionAlgo: packet.CompressionZLIB,
+		CompressionConfig: &packet.CompressionConfig{
+			Level: 9,
+		},
+		RSABits: 4096,
+	}
+	currentTime := config.Now()
+	uid := packet.NewUserId("", "", "")
+
+	e := openpgp.Entity{
+		PrimaryKey: pubKey,
+		PrivateKey: privKey,
+		Identities: make(map[string]*openpgp.Identity),
+	}
+	isPrimaryID := false
+
+	e.Identities[uid.Id] = &openpgp.Identity{
+		Name:   uid.Name,
+		UserId: uid,
+		SelfSignature: &packet.Signature{
+			CreationTime: currentTime,
+			SigType:      packet.SigTypePositiveCert,
+			PubKeyAlgo:   packet.PubKeyAlgoRSA,
+			Hash:         config.Hash(),
+			IsPrimaryId:  &isPrimaryID,
+			FlagsValid:   true,
+			FlagSign:     true,
+			FlagCertify:  true,
+			IssuerKeyId:  &e.PrimaryKey.KeyId,
+		},
+	}
+
+	keyLifetimeSecs := uint32(86400 * 365)
+
+	e.Subkeys = make([]openpgp.Subkey, 1)
+	e.Subkeys[0] = openpgp.Subkey{
+		PublicKey:  pubKey,
+		PrivateKey: privKey,
+		Sig: &packet.Signature{
+			CreationTime:              currentTime,
+			SigType:                   packet.SigTypeSubkeyBinding,
+			PubKeyAlgo:                packet.PubKeyAlgoRSA,
+			Hash:                      config.Hash(),
+			PreferredHash:             []uint8{8}, // SHA-256
+			FlagsValid:                true,
+			FlagEncryptStorage:        true,
+			FlagEncryptCommunications: true,
+			IssuerKeyId:               &e.PrimaryKey.KeyId,
+			KeyLifetimeSecs:           &keyLifetimeSecs,
+		},
+	}
+	return &e
+}
+
+func encryptFile(publicKey string, privateKey string, file string) {
+	pubKey := decodePublicKey(publicKey)
+	privKey := decodePrivateKey(privateKey)
+
+	to := createEntityFromKeys(pubKey, privKey)
+
+	ofile, err := os.Open(file + ".gpg")
+	if err != nil {
+		log.Error(err)
+	}
+	defer ofile.Close()
+
+	w, err := armor.Encode(ofile, "Message", make(map[string]string))
+	if err != nil {
+		log.Error(err)
+	}
+	defer w.Close()
+
+	plain, err := openpgp.Encrypt(w, []*openpgp.Entity{to}, nil, nil, nil)
+	if err != nil {
+		log.Error(err)
+	}
+	defer plain.Close()
+
+	compressed, err := gzip.NewWriterLevel(plain, gzip.NoCompression) //BestCompression)
+	if err != nil {
+		log.Error(err)
+	}
+
+	infile, err := os.Open(file)
+	if err != nil {
+		log.Error(err)
+	}
+	defer infile.Close()
+
+	n, err := io.Copy(compressed, infile)
+	if err != nil {
+		log.Errorf("Error writing encrypted file %s", n)
+	}
+
+	compressed.Close()
+}
+
+func decryptFile(publicKey string, privateKey string, file string) {
+	pubKey := decodePublicKey(publicKey)
+	privKey := decodePrivateKey(privateKey)
+
+	entity := createEntityFromKeys(pubKey, privKey)
+
+	in, err := os.Open(file)
+	if err != nil {
+		log.Error(err)
+	}
+	defer in.Close()
+
+	block, err := armor.Decode(in)
+	if err != nil {
+		log.Error(err)
+	}
+
+	if block.Type != "Message" {
+		log.Error("Invalid message type")
+	}
+
+	var entityList openpgp.EntityList
+	entityList = append(entityList, entity)
+
+	md, err := openpgp.ReadMessage(block.Body, entityList, nil, nil)
+	if err != nil {
+		log.Error(err)
+	}
+
+	compressed, err := gzip.NewReader(md.UnverifiedBody)
+	if err != nil {
+		log.Error(err)
+	}
+	defer compressed.Close()
+	if err != nil {
+		log.Error(err)
+	}
+
+	dfile, err := os.Open(file + ".s3s2")
+	if err != nil {
+		log.Error(err)
+	}
+	defer dfile.Close()
+
+	n, err := io.Copy(dfile, compressed)
+	if err != nil {
+		log.Error(err, "Error reading encrypted file")
+		log.Errorf("Decrypted %d bytes", n)
+	}
+}
+
+func signFile(publicKey string, privateKey string, file string) {
+	pubKey := decodePublicKey(publicKey)
+	privKey := decodePrivateKey(privateKey)
+
+	signer := createEntityFromKeys(pubKey, privKey)
+	in, err := os.Open(file)
+	if err != nil {
+		log.Error(err)
+	}
+	// TODO:  Write signature somewhere useful.
+	err = openpgp.ArmoredDetachSign(os.Stdout, signer, in, nil)
+	if err != nil {
+		log.Error(err)
+	}
+}
+
+func verifyFile(publicKey string, signatureFile string) {
+	pubKey := decodePublicKey(publicKey)
+	sig := decodeSignature(signatureFile)
+
+	hash := sig.Hash.New()
+	io.Copy(hash, os.Stdin)
+
+	err := pubKey.VerifySignature(hash, sig)
+	if err != nil {
+		log.Error(err)
+	}
+}
+
+func decodeSignature(filename string) *packet.Signature {
+
+	// open ascii armored public key
+	in, err := os.Open(filename)
+	if err != nil {
+		log.Error(err)
+	}
+	defer in.Close()
+
+	block, err := armor.Decode(in)
+	if err != nil {
+		log.Error(err)
+	}
+
+	if block.Type != openpgp.SignatureType {
+		log.Error(errors.New("Invalid signature file"))
+	}
+
+	reader := packet.NewReader(block.Body)
+	pkt, err := reader.Next()
+	if err != nil {
+		log.Error(err)
+	}
+
+	sig, ok := pkt.(*packet.Signature)
+	if !ok {
+		log.Error(errors.New("Invalid signature"))
+	}
+	return sig
+}
+
+func encodePrivateKey(out io.Writer, key *rsa.PrivateKey) {
+	w, err := armor.Encode(out, openpgp.PrivateKeyType, make(map[string]string))
+	if err != nil {
+		log.Error(err)
+	}
+
+	pgpKey := packet.NewRSAPrivateKey(time.Now(), key)
+	err = pgpKey.Serialize(w)
+	if err != nil {
+		log.Error(err)
+	}
+	err = w.Close()
+	if err != nil {
+		log.Error(err)
+	}
+}
+
+func encodePublicKey(out io.Writer, key *rsa.PrivateKey) {
+	w, err := armor.Encode(out, openpgp.PublicKeyType, make(map[string]string))
+	if err != nil {
+		log.Error(err)
+	}
+
+	pgpKey := packet.NewRSAPublicKey(time.Now(), &key.PublicKey)
+	err = pgpKey.Serialize(w)
+	if err != nil {
+		log.Error(err)
+	}
+	err = w.Close()
+	if err != nil {
+		log.Error(err)
+	}
+}
+
+// GenerateKeys PGP Keys
+func GenerateKeys(directory string, keyname string, bits int) {
+	key, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		log.Error(err)
+	}
+
+	priv, err := os.Create(filepath.Join(directory, keyname+".privkey"))
+	if err != nil {
+		log.Error(err)
+	}
+	defer priv.Close()
+
+	pub, err := os.Create(filepath.Join(directory, keyname+".pubkey"))
+	if err != nil {
+		log.Error(err)
+	}
+	defer pub.Close()
+
+	encodePrivateKey(priv, key)
+	encodePublicKey(pub, key)
 }

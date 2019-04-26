@@ -73,15 +73,15 @@ func UploadFile(folder string, filename string, options options.Options) error {
 }
 
 // DownloadFile function to download a file from S3.
-func DownloadFile(directory string, options options.Options) (string, error) {
-	log.Debugf("\tDownloading file.")
+func DownloadFile(directory string, pullfile string, options options.Options) (string, error) {
+	log.Debugf("\tDownloading file: %s", pullfile)
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(options.Region),
 	}))
 
 	downloader := s3manager.NewDownloader(sess)
 
-	filename := directory + options.File
+	filename := filepath.Clean(directory + pullfile)
 	dirname := filepath.Dir(filename)
 	os.MkdirAll(dirname, os.ModePerm)
 	file, err := os.Create(filename)
@@ -93,12 +93,12 @@ func DownloadFile(directory string, options options.Options) (string, error) {
 	numBytes, err := downloader.Download(file,
 		&s3.GetObjectInput{
 			Bucket: aws.String(options.Bucket),
-			Key:    aws.String(options.File),
+			Key:    aws.String(pullfile),
 		})
 	if err != nil {
-		log.Errorf("Unable to download item %q, %v", filename, err)
+		log.Errorf("Unable to download item %q, %v", pullfile, err)
 	}
-	log.Debugf("\tDownloaded %s of %d bytes", file.Name, numBytes)
+	log.Debugf("\tDownloaded %s of %d bytes", pullfile, numBytes)
 
 	return file.Name(), nil
 }
