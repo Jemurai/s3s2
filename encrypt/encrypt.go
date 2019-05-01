@@ -63,14 +63,14 @@ func Decrypt(filename string, pubkey string, privkey string) {
 }
 
 // Encrypt a file
-func Encrypt(filename string, pubkey string, privkey string) {
-	encryptFile(pubkey, privkey, filename)
+func Encrypt(filename string, pubkey string) {
+	encryptFile(pubkey, filename)
 }
 
 // This was an older deprecated function.
 func encrypt2(filename string, pubkey string) {
 	key := getKey(pubkey)
-	log.Debugf("\tPublic key:", key)
+	log.Debugf("\tPublic key: %v", key)
 
 	// Read in public key
 	recipient, err := readEntity(key)
@@ -274,11 +274,11 @@ func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) 
 	return &e
 }
 
-func encryptFile(publicKey string, privateKey string, file string) {
+func encryptFile(publicKey string, file string) {
 	pubKey := decodePublicKey(publicKey)
-	privKey := decodePrivateKey(privateKey)
 	config := getEncryptionConfig()
-	to := createEntityFromKeys(pubKey, privKey)
+	//	privKey := decodePrivateKey(privateKey)
+	to := createEntityFromKeys(pubKey, nil) // We shouldn't have the receiver's private key!!!
 
 	ofile, err := os.Create(file + ".gpg")
 	if err != nil {
@@ -293,7 +293,7 @@ func encryptFile(publicKey string, privateKey string, file string) {
 	defer w.Close()
 
 	// Here the signer should be the sender
-	plain, err := openpgp.Encrypt(w, []*openpgp.Entity{to}, to, &openpgp.FileHints{IsBinary: true}, &config)
+	plain, err := openpgp.Encrypt(w, []*openpgp.Entity{to}, nil, &openpgp.FileHints{IsBinary: true}, &config)
 	if err != nil {
 		log.Error(err)
 	}
@@ -312,7 +312,7 @@ func encryptFile(publicKey string, privateKey string, file string) {
 
 	n, err := io.Copy(compressed, infile)
 	if err != nil {
-		log.Errorf("Error writing encrypted file %s", n)
+		log.Errorf("Error writing encrypted file %d", n)
 	}
 
 	compressed.Close()

@@ -74,7 +74,7 @@ func processFile(folder string, fn string, options options.Options) {
 	archiveTime := timing(start, "\tArchive time (sec): %f")
 	log.Debugf("\tZstd compressing file: %s", fn)
 	if options.PubKey != "" {
-		encrypt.Encrypt(fn, options.PubKey, options.PrivKey)
+		encrypt.Encrypt(fn, options.PubKey)
 		fn = fn + ".gpg"
 	}
 	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
@@ -100,7 +100,6 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	bucket := viper.GetString("bucket")
 	region := viper.GetString("region")
 	pubKey := viper.GetString("pubkey")
-	privKey := viper.GetString("privkey")
 	awsKey := viper.GetString("awskey")
 	org := viper.GetString("org")
 	prefix := viper.GetString("prefix")
@@ -110,7 +109,6 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 		Bucket:    bucket,
 		Region:    region,
 		PubKey:    pubKey,
-		PrivKey:   privKey,
 		AwsKey:    awsKey,
 		Org:       org,
 		Prefix:    prefix,
