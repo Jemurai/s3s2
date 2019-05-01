@@ -109,8 +109,8 @@ func buildDecryptOptions() options.Options {
 		destination = destination + "/"
 	}
 	region := viper.GetString("region")
-	privKey := viper.GetString("privkey")
-	pubKey := viper.GetString("pubkey")
+	privKey := viper.GetString("my-private-key")
+	pubKey := viper.GetString("my-public-key")
 
 	options := options.Options{
 		Bucket:      bucket,
@@ -154,9 +154,13 @@ func init() {
 	decryptCmd.MarkFlagRequired("file")
 	decryptCmd.PersistentFlags().String("destination", "", "The destination directory to decrypt and unzip.")
 	decryptCmd.MarkFlagRequired("destination")
+	decryptCmd.PersistentFlags().String("my-private-key", "", "The receiver's private key.  A local file path.")
+	decryptCmd.PersistentFlags().String("my-public-key", "", "The receiver's public key.  A local file path.")
 
 	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
 	viper.BindPFlag("destination", decryptCmd.PersistentFlags().Lookup("destination"))
+	viper.BindPFlag("my-private-key", decryptCmd.PersistentFlags().Lookup("my-private-key"))
+	viper.BindPFlag("my-public-key", decryptCmd.PersistentFlags().Lookup("my-public-key"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})

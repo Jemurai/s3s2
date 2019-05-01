@@ -99,7 +99,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	directory := viper.GetString("directory")
 	bucket := viper.GetString("bucket")
 	region := viper.GetString("region")
-	pubKey := viper.GetString("pubkey")
+	pubKey := viper.GetString("receiver-public-key")
 	awsKey := viper.GetString("awskey")
 	org := viper.GetString("org")
 	prefix := viper.GetString("prefix")
@@ -142,11 +142,13 @@ func init() {
 	shareCmd.MarkFlagRequired("org")
 	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path.")
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
+	shareCmd.PersistentFlags().String("receiver-public-key", "", "The receiver's public key.  A local file path.")
 
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
 	viper.BindPFlag("prefix", shareCmd.PersistentFlags().Lookup("prefix"))
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
+	viper.BindPFlag("receiver-public-key", shareCmd.PersistentFlags().Lookup("receiver-public-key"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})
