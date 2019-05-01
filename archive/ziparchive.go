@@ -23,6 +23,8 @@ import (
 )
 
 // ZipFile archives the provided list of files into a Zip file.
+// This is functional but not currently used in S3S2 in favor of
+// the Zst archive format which is faster and better compression.
 func ZipFile(filename string) string {
 	zfilename := filename + ".zip"
 	newZipFile, err := os.Create(zfilename)
