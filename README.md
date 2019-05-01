@@ -1,6 +1,6 @@
 # s3s2
 
-Safe and secure (s2) file sharing with S3.
+Safe and secure (s2) file sharing with S3 (Amazon's Simple sharing service).
 
 Simple Secure S3 Share - Share files securely with S3.
 
@@ -17,8 +17,10 @@ This will take the current working directory, list the files to build a manifest
 ## An Example of Using S3 as an Organization that Wants to Receive Incoming Data Securely
 
 1. Set up your AWS KMS key, S3 bucket and GPG key (if desired).
+1. Run `s3s2 genkey `
 1. Run `s3s2 config` to build your reference config.
-1. Run `s3s2 share --directory /dir/to/share --org OrgName`
+1. Have your partner run `s3s2 share --directory /dir/to/share --org OrgName`
+1. Run `s3s2 decrypt `
 
 ## Setting Up AWS
 
@@ -26,8 +28,8 @@ See the `clisetup.sh` script for snippets you can use that might be helpful when
 
 Other references:
 
-- https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html
-- https://docs.aws.amazon.com/cli/latest/reference/kms/create-key.html
+- [AWS Key Policies](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html)
+- [AWS KMS Create Key](https://docs.aws.amazon.com/cli/latest/reference/kms/create-key.html)
 
 ## Building a Configuration
 
@@ -50,6 +52,17 @@ Please specify a public key to use (file path or url).
 > https://s3s2.jemurai.com/.well_known/s3s2-pub.asc
 Your config was written to /Users/mk/s3s2-demo.json . You can invoke with s3s2 --config /Users/mk/s3s2-demo.json
 ```
+
+## Building S3S2
+
+Since Go provides the ability to cross compile, here are some of the common commands: 
+`GOOS=linux GOARCH=amd64 go build -v github.com/jemurai/s3s2`
+
+`go build`
+
+## Documentation
+
+You can see the code level documentation by running:  `godoc -http=:6060` and visiting localhost:6060 in a browser.
 
 # Get Help
 

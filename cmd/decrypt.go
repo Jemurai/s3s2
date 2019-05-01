@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -46,6 +47,7 @@ var decryptCmd = &cobra.Command{
 		checkDecryptOptions(opts)
 
 		if strings.HasSuffix(opts.File, "manifest.json") {
+			log.Debugf("manifest file: %s, %s", opts.Destination, opts.File)
 			fn, err := s3helper.DownloadFile(opts.Destination, opts.File, opts)
 			if err != nil {
 				log.Error(err)
@@ -79,12 +81,16 @@ func decryptFile(file string, options options.Options) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	stat, _ := os.Stat(fn)
+	log.Debugf("Stat of file: %v", stat.Size())
+
 	downloadTime := timing(start, "\tDownload time (sec): %f")
 
 	encryptTime := time.Now()
 	if options.PrivKey != "" && strings.HasSuffix(file, ".gpg") {
-		log.Debug("Would be decrypting here...")
+		log.Debugf("Would be decrypting here... %s", fn)
 		encrypt.Decrypt(fn, options.PubKey, options.PrivKey)
+		fn = strings.TrimSuffix(fn, ".gpg")
 		encryptTime = timing(downloadTime, "\tEncrypt time (sec): %f")
 	}
 
@@ -97,7 +103,6 @@ func decryptFile(file string, options options.Options) {
 
 func buildDecryptOptions() options.Options {
 	bucket := viper.GetString("bucket")
-	fmt.Print("Building options : " + bucket)
 	file := viper.GetString("file")
 	destination := viper.GetString("destination")
 	if !strings.HasSuffix(destination, "/") {
@@ -149,11 +154,9 @@ func init() {
 	decryptCmd.MarkFlagRequired("file")
 	decryptCmd.PersistentFlags().String("destination", "", "The destination directory to decrypt and unzip.")
 	decryptCmd.MarkFlagRequired("destination")
-	decryptCmd.PersistentFlags().String("privkey", "", "The receiver's private key.  A local file path.")
 
 	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
 	viper.BindPFlag("destination", decryptCmd.PersistentFlags().Lookup("destination"))
-	viper.BindPFlag("privkey", decryptCmd.PersistentFlags().Lookup("privkey"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})

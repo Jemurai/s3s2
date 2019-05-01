@@ -49,7 +49,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 	if options.AwsKey != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket:               aws.String(options.Bucket),
-			Key:                  aws.String(folder + f.Name()),
+			Key:                  aws.String(filepath.Clean(folder + "/" + f.Name())),
 			ServerSideEncryption: aws.String("aws:kms"),
 			SSEKMSKeyId:          aws.String(options.AwsKey),
 			Body:                 f,
@@ -61,7 +61,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(options.Bucket),
-			Key:    aws.String(folder + f.Name()),
+			Key:    aws.String(filepath.Clean(folder + "/" + f.Name())),
 			Body:   f,
 		})
 		if err != nil {
@@ -81,7 +81,7 @@ func DownloadFile(directory string, pullfile string, options options.Options) (s
 
 	downloader := s3manager.NewDownloader(sess)
 
-	filename := filepath.Clean(directory + pullfile)
+	filename := filepath.Clean(directory + "/" + pullfile)
 	dirname := filepath.Dir(filename)
 	os.MkdirAll(dirname, os.ModePerm)
 	file, err := os.Create(filename)
@@ -90,7 +90,8 @@ func DownloadFile(directory string, pullfile string, options options.Options) (s
 	}
 	defer file.Close()
 
-	numBytes, err := downloader.Download(file,
+	// TODO:  Add the S3 KMS keys if needed.
+	_, err = downloader.Download(file,
 		&s3.GetObjectInput{
 			Bucket: aws.String(options.Bucket),
 			Key:    aws.String(pullfile),
@@ -98,7 +99,5 @@ func DownloadFile(directory string, pullfile string, options options.Options) (s
 	if err != nil {
 		log.Errorf("Unable to download item %q, %v", pullfile, err)
 	}
-	log.Debugf("\tDownloaded %s of %d bytes", pullfile, numBytes)
-
 	return file.Name(), nil
 }

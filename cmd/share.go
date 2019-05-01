@@ -74,7 +74,7 @@ func processFile(folder string, fn string, options options.Options) {
 	archiveTime := timing(start, "\tArchive time (sec): %f")
 	log.Debugf("\tZstd compressing file: %s", fn)
 	if options.PubKey != "" {
-		encrypt.Encrypt(fn, options.PubKey)
+		encrypt.Encrypt(fn, options.PubKey, options.PrivKey)
 		fn = fn + ".gpg"
 	}
 	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
@@ -100,6 +100,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	bucket := viper.GetString("bucket")
 	region := viper.GetString("region")
 	pubKey := viper.GetString("pubkey")
+	privKey := viper.GetString("privkey")
 	awsKey := viper.GetString("awskey")
 	org := viper.GetString("org")
 	prefix := viper.GetString("prefix")
@@ -109,6 +110,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 		Bucket:    bucket,
 		Region:    region,
 		PubKey:    pubKey,
+		PrivKey:   privKey,
 		AwsKey:    awsKey,
 		Org:       org,
 		Prefix:    prefix,
@@ -141,13 +143,11 @@ func init() {
 	shareCmd.PersistentFlags().String("org", "", "The organization that owns the files.")
 	shareCmd.MarkFlagRequired("org")
 	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path.")
-	shareCmd.PersistentFlags().String("pubkey", "", "The receiver's public key.  A link or a local file path.")
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
 	viper.BindPFlag("prefix", shareCmd.PersistentFlags().Lookup("prefix"))
-	viper.BindPFlag("pubkey", shareCmd.PersistentFlags().Lookup("pubkey"))
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
 
 	//log.SetFormatter(&log.JSONFormatter{})

@@ -27,9 +27,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+
+	// For the signature algorithm.
+	_ "golang.org/x/crypto/ripemd160"
 
 	uuid "github.com/satori/go.uuid"
 	"golang.org/x/crypto/openpgp"
@@ -37,21 +41,34 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
-// Possible reference...
-// https://gist.github.com/ayubmalik/a83ee23c7c700cdce2f8c5bf5f2e9f20
+// Possible references...
+// There are some challenges here.
 //
+// Specifically, we want to stream the data.
+//
+// https://gist.github.com/ayubmalik/a83ee23c7c700cdce2f8c5bf5f2e9f20
 // https://gist.github.com/stuart-warren/93750a142d3de4e8fdd2
 // https://play.golang.org/p/vk58yYArMh
 // https://github.com/jchavannes/go-pgp/blob/master/pgp/encrypt.go
 // https://gist.github.com/eliquious/9e96017f47d9bd43cdf9
+// https://medium.com/@raul_11817/golang-cryptography-rsa-asymmetric-algorithm-e91363a2f7b3
+// https://github.com/jamesruan/sodium
+// https://github.com/keybase/client/blob/master/go/engine/crypto.go
+// https://github.com/keybase/saltpack
+// https://github.com/hashicorp/vault/blob/master/command/pgp_test.go
 
 // Decrypt a file with a provided key.
 func Decrypt(filename string, pubkey string, privkey string) {
 	decryptFile(pubkey, privkey, filename)
 }
 
-// Encrypt the file with public key provided.
-func Encrypt(filename string, pubkey string) {
+// Encrypt a file
+func Encrypt(filename string, pubkey string, privkey string) {
+	encryptFile(pubkey, privkey, filename)
+}
+
+// Encrypt2 the file with public key provided.
+func Encrypt2(filename string, pubkey string) {
 	key := getKey(pubkey)
 	log.Debugf("\tPublic key:", key)
 
@@ -193,7 +210,7 @@ func decodePublicKey(filename string) *packet.PublicKey {
 	return key
 }
 
-func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) *openpgp.Entity {
+func getEncryptionConfig() packet.Config {
 	config := packet.Config{
 		DefaultHash:            crypto.SHA256,
 		DefaultCipher:          packet.CipherAES256,
@@ -204,6 +221,11 @@ func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) 
 		},
 		RSABits: 4096,
 	}
+	return config
+}
+
+func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) *openpgp.Entity {
+	config := getEncryptionConfig()
 	currentTime := config.Now()
 	uid := packet.NewUserId("", "", "")
 
@@ -255,10 +277,10 @@ func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) 
 func encryptFile(publicKey string, privateKey string, file string) {
 	pubKey := decodePublicKey(publicKey)
 	privKey := decodePrivateKey(privateKey)
-
+	config := getEncryptionConfig()
 	to := createEntityFromKeys(pubKey, privKey)
 
-	ofile, err := os.Open(file + ".gpg")
+	ofile, err := os.Create(file + ".gpg")
 	if err != nil {
 		log.Error(err)
 	}
@@ -270,13 +292,14 @@ func encryptFile(publicKey string, privateKey string, file string) {
 	}
 	defer w.Close()
 
-	plain, err := openpgp.Encrypt(w, []*openpgp.Entity{to}, nil, nil, nil)
+	// Here the signer should be the sender
+	plain, err := openpgp.Encrypt(w, []*openpgp.Entity{to}, to, &openpgp.FileHints{IsBinary: true}, &config)
 	if err != nil {
 		log.Error(err)
 	}
 	defer plain.Close()
 
-	compressed, err := gzip.NewWriterLevel(plain, gzip.NoCompression) //BestCompression)
+	compressed, err := gzip.NewWriterLevel(plain, gzip.BestCompression) //BestCompression)
 	if err != nil {
 		log.Error(err)
 	}
@@ -319,7 +342,8 @@ func decryptFile(publicKey string, privateKey string, file string) {
 	var entityList openpgp.EntityList
 	entityList = append(entityList, entity)
 
-	md, err := openpgp.ReadMessage(block.Body, entityList, nil, nil)
+	config := getEncryptionConfig()
+	md, err := openpgp.ReadMessage(block.Body, entityList, nil, &config)
 	if err != nil {
 		log.Error(err)
 	}
@@ -332,8 +356,8 @@ func decryptFile(publicKey string, privateKey string, file string) {
 	if err != nil {
 		log.Error(err)
 	}
-
-	dfile, err := os.Open(file + ".s3s2")
+	dfn := strings.TrimSuffix(file, ".gpg")
+	dfile, err := os.Create(dfn)
 	if err != nil {
 		log.Error(err)
 	}
@@ -344,6 +368,7 @@ func decryptFile(publicKey string, privateKey string, file string) {
 		log.Error(err, "Error reading encrypted file")
 		log.Errorf("Decrypted %d bytes", n)
 	}
+
 }
 
 func signFile(publicKey string, privateKey string, file string) {
