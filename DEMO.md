@@ -21,11 +21,11 @@
 
 ## Demo By Hand
 
-1. Generate keys to use:  `s3s2 genkey --keydir ./test/s3s2/s3s2-keys/ --keyprefix test1`
+1. Generate keys to use:  `s3s2 genkey --keydir ./test/s3s2/s3s2-keys/ --keyprefix test`
 1. Set up data to use.  For the purpose of this demo, we'll put the data we want to process in test/s3s2/s3s2-up/
-1. Share the directory: `aws-vault exec <role>s3s2 share --debug true --bucket <your-bucket> --region <your-region> --directory test/s3s2/s3s2-up/ --org YourOrg --prefix <optional-prefix> --pubkey test/s3s2/s3s2-keys/test1.pubkey --privkey test/s3s2/s3s2-keys/test1.privkey`  (Keys and directories per setup)
+1. Share the directory: `aws-vault exec <role>s3s2 share --debug true --bucket <your-bucket> --region <your-region> --directory test/s3s2/s3s2-up/ --org YourOrg --prefix <optional-prefix> --receiver-public-key test/s3s2/s3s2-keys/test.pubkey`  (Keys and directories per setup)
 1. Check your bucket for the files:  `aws-vault exec <role> -- aws s3 ls <your-bucket>`
-1. Download and decrypt the files:  `aws-vault exec <role> -- s3s2 decrypt --debug true --bucket <your-bucket> --region <your-region> --destination ./test/s3s2/s3s2-down/ --privkey ./test/s3s2/s3s2-keys/test1.privkey --pubkey ./test/s3s2/s3s2-keys/test1.pubkey --file <the manifest.json file from the share step>`
+1. Download and decrypt the files:  `aws-vault exec <role> -- s3s2 decrypt --debug true --bucket <your-bucket> --region <your-region> --destination ./test/s3s2/s3s2-down/ --my-private-key ./test/s3s2/s3s2-keys/test.privkey --my-public-key ./test/s3s2/s3s2-keys/test1.pubkey --file <the manifest.json file from the share step>`
 1. Check the local files:  `ls -al test/s3s2/s3s2-down/`
 
 ## Cleanup

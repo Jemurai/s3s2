@@ -10,9 +10,9 @@ Anything that can be done in this tool could be done by hand with tools like key
 
 ## Running s3s2
 
-`s3s2 share --bucket sharing-bucket --pubkey https://s3s3.jemurai.com/.well_known/s3s2-pub.asc --directory .`
+`s3s2 share --debug true --bucket <your-bucket> --region <your-region> --directory test/s3s2/s3s2-up/ --org YourOrg --prefix <optional-prefix> --receiver-public-key test/s3s2/s3s2-keys/test.pubkey`
 
-This will take the current working directory, list the files to build a manifest.json file, put them all in a Zip file, encrypt that with the public key of the receiving party (so that only they, with the private key can read it) and drop the file in an S3 bucket.
+This will take the current working directory, list the files to build a manifest.json file, compress each one, then encrypt each with the public key of the receiving party (so that only they, with the private key can read it) and upload the file in an S3 bucket.
 
 ## An Example of Using S3 as an Organization that Wants to Receive Incoming Data Securely
 
@@ -24,10 +24,7 @@ This will take the current working directory, list the files to build a manifest
 
 ## Setting Up AWS
 
-See the `clisetup.sh` script for snippets you can use that might be helpful when setting up the AWS environment and GPG keys.
-
 Other references:
-
 - [AWS Key Policies](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html)
 - [AWS KMS Create Key](https://docs.aws.amazon.com/cli/latest/reference/kms/create-key.html)
 

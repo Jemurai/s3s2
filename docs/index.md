@@ -92,6 +92,12 @@ Your config was written to /Users/mk/s3s2-demo.json . You can invoke with s3s2 -
 Running s3s2 is as simple as invoking this from a terminal or command prompt:  
 `s3s2 share --directory /directory/to/share>`
 
+Or more realistically:
+
+```bash
+s3s2 share --debug true --bucket <your-bucket> --region <your-region> --directory test/s3s2/s3s2-up/ --org YourOrg --prefix <optional-prefix> --reciever-public-key test/s3s2/s3s2-keys/test.pubkey
+```
+
 The parameters supported include: 
 
 - --directory : The path to the directory to share.
