@@ -67,8 +67,8 @@ func Encrypt(filename string, pubkey string, privkey string) {
 	encryptFile(pubkey, privkey, filename)
 }
 
-// Encrypt2 the file with public key provided.
-func Encrypt2(filename string, pubkey string) {
+// This was an older deprecated function.
+func encrypt2(filename string, pubkey string) {
 	key := getKey(pubkey)
 	log.Debugf("\tPublic key:", key)
 

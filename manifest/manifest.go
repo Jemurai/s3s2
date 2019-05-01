@@ -65,6 +65,8 @@ func ReadManifest(file string) Manifest {
 }
 
 // BuildManifest builds a manifest from a directory.
+// It reads the contents of the directory and captures the file names,
+// owners, dates and user into a manifest.json file.
 func BuildManifest(folder string, options options.Options) Manifest {
 	var files []FileDescription
 	err := filepath.Walk(options.Directory,
@@ -101,13 +103,13 @@ func BuildManifest(folder string, options options.Options) Manifest {
 
 func hash(file string) string {
 	start := time.Now()
-	/*
-		hasher := sha256.New()
-		s, err := ioutil.ReadFile(file)
-		hasher.Write(s)
-		if err != nil {
-			log.Fatal(err)
-		}
+	/*  This is commented out because it is actually slow.
+	hasher := sha256.New()
+	s, err := ioutil.ReadFile(file)
+	hasher.Write(s)
+	if err != nil {
+		log.Fatal(err)
+	}
 	*/
 	current := time.Now()
 	elapsed := current.Sub(start)
