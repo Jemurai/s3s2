@@ -61,14 +61,10 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "debug mode")
 	rootCmd.PersistentFlags().StringVar(&bucket, "bucket", "", "The bucket to work with.")
 	rootCmd.PersistentFlags().StringVar(&region, "region", "", "The region the bucket is in.")
-	rootCmd.PersistentFlags().StringVar(&privkey, "privkey", "", "The receiver's private key.  A local file path.")
-	rootCmd.PersistentFlags().StringVar(&pubkey, "pubkey", "", "The receiver's public key.  A local file path.")
 
 	viper.BindPFlag("bucket", rootCmd.PersistentFlags().Lookup("bucket"))
 	viper.BindPFlag("region", rootCmd.PersistentFlags().Lookup("region"))
 	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
-	viper.BindPFlag("privkey", rootCmd.PersistentFlags().Lookup("privkey"))
-	viper.BindPFlag("pubkey", rootCmd.PersistentFlags().Lookup("pubkey"))
 
 }
 

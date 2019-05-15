@@ -69,10 +69,10 @@ that it will be encrypted.`,
 func processFile(folder string, fn string, options options.Options) {
 	log.Debugf("Processing %s", fn)
 	start := time.Now()
-	fn = archive.ZstdFile(fn)
+	fn = archive.ZipFile(fn)
 	//fn = archive.ZipFile(fn)
 	archiveTime := timing(start, "\tArchive time (sec): %f")
-	log.Debugf("\tZstd compressing file: %s", fn)
+	log.Debugf("\tCompressing file: %s", fn)
 	if options.PubKey != "" {
 		encrypt.Encrypt(fn, options.PubKey)
 		fn = fn + ".gpg"

@@ -15,71 +15,72 @@
 package archive
 
 import (
-	"io"
-	"path/filepath"
-	"strings"
-
 	log "github.com/sirupsen/logrus"
-	zstd "github.com/valyala/gozstd"
-
-	"os"
+	//	zstd "github.com/valyala/gozstd"
 )
 
 // ZstdFile archives the provided file.
 func ZstdFile(filename string) string {
 
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Error(err)
-	}
-	defer file.Close()
+	log.Error("Currently unsupported")
+	/*
+		file, err := os.Open(filename)
+		if err != nil {
+			log.Error(err)
+		}
+		defer file.Close()
 
-	zfilename := filename + ".zst"
-	newZstdFile, err := os.Create(zfilename)
-	if err != nil {
-		log.Error(err)
-	}
-	defer newZstdFile.Close()
+		zfilename := filename + ".zst"
+		newZstdFile, err := os.Create(zfilename)
+		if err != nil {
+			log.Error(err)
+		}
+		defer newZstdFile.Close()
 
-	zWriter := zstd.NewWriter(newZstdFile)
-	defer zWriter.Close()
+		zWriter := zstd.NewWriter(newZstdFile)
+		defer zWriter.Close()
 
-	if count, err := io.Copy(zWriter, file); err != nil {
-		log.Error(err)
-	} else {
-		log.Debugf("\tWrote bytes %d", count)
-	}
-	return zfilename
+		if count, err := io.Copy(zWriter, file); err != nil {
+			log.Error(err)
+		} else {
+			log.Debugf("\tWrote bytes %d", count)
+		}
+		return zfilename
+	*/
+	return ""
 }
 
 // UnZstdFile uncompresses and archive
 func UnZstdFile(filename string) string {
+	log.Error("Unsupported")
+	/*
+		if !strings.HasSuffix(filename, ".zst") {
+			return filename
+		}
 
-	if !strings.HasSuffix(filename, ".zst") {
-		return filename
-	}
+		zfile, err := os.Open(filename)
+		if err != nil {
+			log.Error(err)
+		}
+		defer zfile.Close()
 
-	zfile, err := os.Open(filename)
-	if err != nil {
-		log.Error(err)
-	}
-	defer zfile.Close()
+		zReader := zstd.NewReader(zfile)
+		defer zReader.Release()
 
-	zReader := zstd.NewReader(zfile)
-	defer zReader.Release()
+		fn := strings.TrimSuffix(filename, filepath.Ext(filename))
 
-	fn := strings.TrimSuffix(filename, filepath.Ext(filename))
+		newFile, err := os.Create(fn)
+		if err != nil {
+			log.Error(err)
+		}
+		defer newFile.Close()
 
-	newFile, err := os.Create(fn)
-	if err != nil {
-		log.Error(err)
-	}
-	defer newFile.Close()
-
-	if count, err := io.Copy(newFile, zReader); err != nil {
-		log.Error(err)
-	} else {
-		log.Debugf("\tWrote bytes %d", count)
-	}
-	return fn
+		if count, err := io.Copy(newFile, zReader); err != nil {
+			log.Error(err)
+		} else {
+			log.Debugf("\tWrote bytes %d", count)
+		}
+		return fn
+	*/
+	return ""
 }

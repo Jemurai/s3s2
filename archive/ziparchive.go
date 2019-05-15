@@ -18,6 +18,8 @@ import (
 	"archive/zip"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -69,4 +71,60 @@ func ZipFile(filename string) string {
 		log.Error(err)
 	}
 	return zfilename
+}
+
+// UnZipFile uncompresses and archive
+func UnZipFile(filename string, destination string) string {
+	log.Debugf("Unzipping file %s", filename)
+	returnFn := filename
+	if !strings.HasSuffix(filename, ".zip") {
+		log.Warnf("Skipping file because it is not a zip file, %s", filename)
+		return returnFn
+	}
+
+	zReader, err := zip.OpenReader(filename)
+	if err != nil {
+		log.Error(err)
+	}
+	defer zReader.Close()
+	for _, file := range zReader.Reader.File {
+
+		zippedFile, err := file.Open()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer zippedFile.Close()
+
+		extractedFilePath := filepath.Join(
+			destination,
+			file.Name,
+		)
+		log.Debugf("\tExtracted path: %s", extractedFilePath)
+		if file.FileInfo().IsDir() {
+			log.Println("Directory Created:", extractedFilePath)
+			os.MkdirAll(extractedFilePath, file.Mode())
+		} else {
+			log.Println("\tFile extracted:", file.Name)
+
+			extractDir := filepath.Dir(extractedFilePath)
+			os.MkdirAll(extractDir, os.ModePerm)
+			outputFile, err := os.OpenFile(
+				extractedFilePath,
+				os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
+				file.Mode(),
+			)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			_, err = io.Copy(outputFile, zippedFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			returnFn = outputFile.Name()
+			outputFile.Close()
+		}
+	}
+	log.Debugf("\tUnzip returning file name %s", returnFn)
+	return returnFn
 }

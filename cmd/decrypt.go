@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,7 +40,6 @@ var decryptCmd = &cobra.Command{
 	Short: "Retrieve files that are stored securely in S3 and decrypt them",
 	Long:  `Retrieve files that are stored securely in S3 and decrypt them`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Print("In decrypt")
 		start := time.Now()
 		opts := buildDecryptOptions()
 		checkDecryptOptions(opts)
@@ -58,7 +56,7 @@ var decryptCmd = &cobra.Command{
 			for i := 0; i < len(m.Files); i++ {
 				if !strings.HasSuffix(m.Files[i].Name, "manifest.json") {
 					wg.Add(1)
-					f := filepath.Clean(m.Folder + "/" + m.Files[i].Name + ".zst.gpg")
+					f := filepath.Clean(m.Folder + "/" + m.Files[i].Name + ".zip.gpg")
 					go func(f string, opts options.Options) {
 						defer wg.Done()
 						decryptFile(f, opts)
@@ -91,11 +89,11 @@ func decryptFile(file string, options options.Options) {
 		log.Debugf("Would be decrypting here... %s", fn)
 		encrypt.Decrypt(fn, options.PubKey, options.PrivKey)
 		fn = strings.TrimSuffix(fn, ".gpg")
-		encryptTime = timing(downloadTime, "\tEncrypt time (sec): %f")
+		encryptTime = timing(downloadTime, "\tDecrypt time (sec): %f")
 	}
 
-	fn = archive.UnZstdFile(fn)
-	log.Debugf("\tZstd decompressing file: %s", fn)
+	log.Debugf("\tDecompressing file: %s", fn)
+	fn = archive.UnZipFile(fn, options.Destination)
 	timing(encryptTime, "\tDecompress time (sec): %f")
 	timing(start, "Total time: %f")
 	log.Debugf("\tProcessed %s", fn)
