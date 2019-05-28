@@ -74,7 +74,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 
 // DownloadFile function to download a file from S3.
 func DownloadFile(directory string, pullfile string, options options.Options) (string, error) {
-	log.Debugf("\tDownloading file: %s", pullfile)
+	log.Debugf("\tDownloading file (1): %s", pullfile)
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(options.Region),
 	}))
@@ -83,13 +83,17 @@ func DownloadFile(directory string, pullfile string, options options.Options) (s
 
 	filename := filepath.Clean(directory + "/" + pullfile)
 	dirname := filepath.Dir(filename)
+	log.Debugf("\tDownloading file (2): %s", filename)
+
 	os.MkdirAll(dirname, os.ModePerm)
 	file, err := os.Create(filename)
 	if err != nil {
+		log.Debugf("\tDownloading file (3): %s", filename)
 		return "", fmt.Errorf("Unable to open file %q, %v", filename, err)
 	}
 	defer file.Close()
 
+	log.Debugf("\tDownloading file (4): About to pull %s, from bucket %s", pullfile, options.Bucket)
 	// TODO:  Add the S3 KMS keys if needed.
 	_, err = downloader.Download(file,
 		&s3.GetObjectInput{
@@ -97,7 +101,9 @@ func DownloadFile(directory string, pullfile string, options options.Options) (s
 			Key:    aws.String(pullfile),
 		})
 	if err != nil {
+		log.Debugf("\tDownloading file (5): %s", pullfile)
 		log.Errorf("Unable to download item %q, %v", pullfile, err)
 	}
+	log.Debugf("\tDownloading file (6): %s", file.Name())
 	return file.Name(), nil
 }
