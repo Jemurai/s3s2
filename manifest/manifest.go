@@ -103,6 +103,16 @@ func BuildManifest(folder string, options options.Options) Manifest {
 	return manifest
 }
 
+// CleanupFile just deletes a file.
+func CleanupFile(fn string) {
+	var err = os.Remove(fn)
+	if err != nil {
+		log.Warnf("\tIssue deleting file: %s", fn)
+	} else {
+		log.Debugf("\tCleaned up: %s", fn)
+	}
+}
+
 func hash(file string, options options.Options) string {
 	start := time.Now()
 	var hash string

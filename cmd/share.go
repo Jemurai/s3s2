@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	manifest "github.com/jemurai/s3s2/manifest"
 	options "github.com/jemurai/s3s2/options"
 	s3helper "github.com/jemurai/s3s2/s3"
+	utils "github.com/jemurai/s3s2/utils"
 )
 
 // shareCmd represents the share command
@@ -52,6 +54,8 @@ that it will be encrypted.`,
 		if err := s3helper.UploadFile(folder, opts.Directory+m.Name, opts); err != nil {
 			log.Error(err)
 		}
+		utils.CleanupFile(opts.Directory + m.Name)
+
 		var wg sync.WaitGroup
 		for i := 0; i < len(m.Files); i++ {
 			wg.Add(1)
@@ -82,6 +86,13 @@ func processFile(folder string, fn string, options options.Options) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	utils.CleanupFile(fn)
+	if strings.HasSuffix(fn, ".gpg") {
+		zipName := strings.TrimSuffix(fn, ".gpg")
+		utils.CleanupFile(zipName)
+	}
+
 	timing(encryptTime, "\tUpload time (sec): %f")
 	log.Debugf("\tProcessed %s", fn)
 }
