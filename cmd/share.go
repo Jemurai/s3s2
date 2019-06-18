@@ -49,7 +49,7 @@ that it will be encrypted.`,
 		folder := opts.Prefix + "_s3s2_" + fnuuid.String()
 		m := manifest.BuildManifest(folder, opts)
 
-		if err := s3helper.UploadFile(folder, opts.Directory + m.Name, opts); err != nil {
+		if err := s3helper.UploadFile(folder, opts.Directory+m.Name, opts); err != nil {
 			log.Error(err)
 		}
 		var wg sync.WaitGroup
@@ -69,7 +69,7 @@ that it will be encrypted.`,
 func processFile(folder string, fn string, options options.Options) {
 	log.Debugf("Processing %s", fn)
 	start := time.Now()
-	fn = archive.ZipFile(options.Directory + fn, options)
+	fn = archive.ZipFile(options.Directory+fn, options)
 	//fn = archive.ZipFile(fn)
 	archiveTime := timing(start, "\tArchive time (sec): %f")
 	log.Debugf("\tCompressing file: %s", fn)
@@ -103,6 +103,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	awsKey := viper.GetString("awskey")
 	org := viper.GetString("org")
 	prefix := viper.GetString("prefix")
+	hash := viper.GetBool("hash")
 
 	options := options.Options{
 		Directory: directory,
@@ -112,6 +113,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 		AwsKey:    awsKey,
 		Org:       org,
 		Prefix:    prefix,
+		Hash:      hash,
 	}
 
 	debug := viper.GetBool("debug")
@@ -143,12 +145,14 @@ func init() {
 	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path.")
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 	shareCmd.PersistentFlags().String("receiver-public-key", "", "The receiver's public key.  A local file path.")
+	shareCmd.PersistentFlags().Bool("hash", false, "Should the tool calculate hashes (slow)?")
 
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
 	viper.BindPFlag("prefix", shareCmd.PersistentFlags().Lookup("prefix"))
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
 	viper.BindPFlag("receiver-public-key", shareCmd.PersistentFlags().Lookup("receiver-public-key"))
+	viper.BindPFlag("hash", shareCmd.PersistentFlags().Lookup("hash"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})

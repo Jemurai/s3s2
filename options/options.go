@@ -12,6 +12,7 @@ type Options struct {
 	AwsKey    string `json:"awskey"`
 	Org       string `json:"org"`
 	Prefix    string `json:"prefix"`
+	Hash      bool   `json:"hash"`
 
 	// Decrypt only
 	File        string `json:"file"`

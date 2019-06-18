@@ -15,6 +15,8 @@
 package manifest
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -75,7 +77,7 @@ func BuildManifest(folder string, options options.Options) Manifest {
 				return err
 			}
 			if !info.IsDir() && !strings.HasSuffix(path, "manifest.json") {
-				sha256hash := hash(path)
+				sha256hash := hash(path, options)
 				files = append(files, FileDescription{strings.Replace(path, options.Directory, "", -1), info.Size(), info.ModTime(), sha256hash})
 			}
 			return nil
@@ -101,21 +103,26 @@ func BuildManifest(folder string, options options.Options) Manifest {
 	return manifest
 }
 
-func hash(file string) string {
+func hash(file string, options options.Options) string {
 	start := time.Now()
-	/*  This is commented out because it is actually slow.
-	hasher := sha256.New()
-	s, err := ioutil.ReadFile(file)
-	hasher.Write(s)
-	if err != nil {
-		log.Fatal(err)
+	var hash string
+	if options.Hash == true {
+		hasher := sha256.New()
+		s, err := ioutil.ReadFile(file)
+		hasher.Write(s)
+		if err != nil {
+			log.Fatal(err)
+		}
+		hash = hex.EncodeToString(hasher.Sum(nil))
+	} else {
+		// Don't actually hash the file.
+		hash = "fake-hash"
 	}
-	*/
+
 	current := time.Now()
 	elapsed := current.Sub(start)
-	log.Debugf("\tTime to hash %s : %f", file, elapsed)
-	//	return hex.EncodeToString(hasher.Sum(nil))
-	return "fake-hash"
+	log.Debugf("\tTime to hash %s : %v", file, elapsed)
+	return hash
 }
 
 func writeManifest(manifest Manifest, directory string) error {
