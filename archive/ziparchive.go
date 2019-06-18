@@ -15,6 +15,7 @@
 package archive
 
 import (
+	"github.com/jemurai/s3s2/options"
 	"archive/zip"
 	"io"
 	"os"
@@ -27,8 +28,9 @@ import (
 // ZipFile archives the provided list of files into a Zip file.
 // This is functional but not currently used in S3S2 in favor of
 // the Zst archive format which is faster and better compression.
-func ZipFile(filename string) string {
+func ZipFile(filename string, options options.Options) string {
 	zfilename := filename + ".zip"
+	log.Debugf("The file name is " + zfilename)
 	newZipFile, err := os.Create(zfilename)
 	if err != nil {
 		log.Error(err)
@@ -57,7 +59,7 @@ func ZipFile(filename string) string {
 
 	// Using FileInfoHeader() above only uses the basename of the file. If we want
 	// to preserve the folder structure we can overwrite this with the full path.
-	header.Name = filename
+	header.Name = strings.Replace(filename, options.Directory, "", -1)
 
 	// Change to deflate to gain better compression
 	// see http://golang.org/pkg/archive/zip/#pkg-constants
@@ -94,7 +96,7 @@ func UnZipFile(filename string, destination string) string {
 			log.Fatal(err)
 		}
 		defer zippedFile.Close()
-
+		log.Debugf("this is the files name from zreader " + file.Name)
 		extractedFilePath := filepath.Join(
 			destination,
 			file.Name,

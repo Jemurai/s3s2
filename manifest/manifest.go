@@ -76,7 +76,7 @@ func BuildManifest(folder string, options options.Options) Manifest {
 			}
 			if !info.IsDir() && !strings.HasSuffix(path, "manifest.json") {
 				sha256hash := hash(path)
-				files = append(files, FileDescription{path, info.Size(), info.ModTime(), sha256hash})
+				files = append(files, FileDescription{strings.Replace(path, options.Directory, "", -1), info.Size(), info.ModTime(), sha256hash})
 			}
 			return nil
 		})
@@ -87,7 +87,7 @@ func BuildManifest(folder string, options options.Options) Manifest {
 	user, err := user.Current()
 	sudoUser := os.Getenv("SUDO_USER") // In case they are sudo'ing, we can know the acting user.
 	manifest := Manifest{
-		Name:         filepath.Clean(options.Directory + "/s3s2_manifest.json"),
+		Name:         filepath.Clean("/s3s2_manifest.json"),
 		Timestamp:    time.Now(),
 		Organization: options.Org,
 		Username:     user.Name,

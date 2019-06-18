@@ -49,7 +49,7 @@ that it will be encrypted.`,
 		folder := opts.Prefix + "_s3s2_" + fnuuid.String()
 		m := manifest.BuildManifest(folder, opts)
 
-		if err := s3helper.UploadFile(folder, m.Name, opts); err != nil {
+		if err := s3helper.UploadFile(folder, opts.Directory + m.Name, opts); err != nil {
 			log.Error(err)
 		}
 		var wg sync.WaitGroup
@@ -69,7 +69,7 @@ that it will be encrypted.`,
 func processFile(folder string, fn string, options options.Options) {
 	log.Debugf("Processing %s", fn)
 	start := time.Now()
-	fn = archive.ZipFile(fn)
+	fn = archive.ZipFile(options.Directory + fn, options)
 	//fn = archive.ZipFile(fn)
 	archiveTime := timing(start, "\tArchive time (sec): %f")
 	log.Debugf("\tCompressing file: %s", fn)
