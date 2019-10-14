@@ -49,6 +49,7 @@ that it will be encrypted.`,
 		checkShareOptions(opts)
 		fnuuid, _ := uuid.NewV4()
 		folder := opts.Prefix + "_s3s2_" + fnuuid.String()
+
 		m := manifest.BuildManifest(folder, opts)
 
 		if err := s3helper.UploadFile(folder, opts.Directory+m.Name, opts); err != nil {
