@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	options "github.com/jemurai/s3s2/options"
 	log "github.com/sirupsen/logrus"
@@ -49,7 +50,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 	if options.AwsKey != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket:               aws.String(options.Bucket),
-			Key:                  aws.String(filepath.Clean(folder + "/" + f.Name())),
+			Key:                  aws.String(filepath.Clean(folder + "/" + strings.Replace(f.Name(), options.Directory, "", -1))),
 			ServerSideEncryption: aws.String("aws:kms"),
 			SSEKMSKeyId:          aws.String(options.AwsKey),
 			Body:                 f,
@@ -61,7 +62,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(options.Bucket),
-			Key:    aws.String(filepath.Clean(folder + "/" + f.Name())),
+			Key:    aws.String(filepath.Clean(folder + "/" + strings.Replace(f.Name(), options.Directory, "", -1))),
 			Body:   f,
 		})
 		if err != nil {

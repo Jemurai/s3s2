@@ -15,6 +15,8 @@
 package manifest
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -75,8 +77,8 @@ func BuildManifest(folder string, options options.Options) Manifest {
 				return err
 			}
 			if !info.IsDir() && !strings.HasSuffix(path, "manifest.json") {
-				sha256hash := hash(path)
-				files = append(files, FileDescription{path, info.Size(), info.ModTime(), sha256hash})
+				sha256hash := hash(path, options)
+				files = append(files, FileDescription{strings.Replace(path, options.Directory, "", -1), info.Size(), info.ModTime(), sha256hash})
 			}
 			return nil
 		})
@@ -87,7 +89,7 @@ func BuildManifest(folder string, options options.Options) Manifest {
 	user, err := user.Current()
 	sudoUser := os.Getenv("SUDO_USER") // In case they are sudo'ing, we can know the acting user.
 	manifest := Manifest{
-		Name:         filepath.Clean(options.Directory + "/s3s2_manifest.json"),
+		Name:         filepath.Clean("/s3s2_manifest.json"),
 		Timestamp:    time.Now(),
 		Organization: options.Org,
 		Username:     user.Name,
@@ -101,21 +103,36 @@ func BuildManifest(folder string, options options.Options) Manifest {
 	return manifest
 }
 
-func hash(file string) string {
-	start := time.Now()
-	/*  This is commented out because it is actually slow.
-	hasher := sha256.New()
-	s, err := ioutil.ReadFile(file)
-	hasher.Write(s)
+// CleanupFile just deletes a file.
+func CleanupFile(fn string) {
+	var err = os.Remove(fn)
 	if err != nil {
-		log.Fatal(err)
+		log.Warnf("\tIssue deleting file: %s", fn)
+	} else {
+		log.Debugf("\tCleaned up: %s", fn)
 	}
-	*/
+}
+
+func hash(file string, options options.Options) string {
+	start := time.Now()
+	var hash string
+	if options.Hash == true {
+		hasher := sha256.New()
+		s, err := ioutil.ReadFile(file)
+		hasher.Write(s)
+		if err != nil {
+			log.Fatal(err)
+		}
+		hash = hex.EncodeToString(hasher.Sum(nil))
+	} else {
+		// Don't actually hash the file.
+		hash = "fake-hash"
+	}
+
 	current := time.Now()
 	elapsed := current.Sub(start)
-	log.Debugf("\tTime to hash %s : %f", file, elapsed)
-	//	return hex.EncodeToString(hasher.Sum(nil))
-	return "fake-hash"
+	log.Debugf("\tTime to hash %s : %v", file, elapsed)
+	return hash
 }
 
 func writeManifest(manifest Manifest, directory string) error {

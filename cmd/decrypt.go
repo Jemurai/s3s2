@@ -26,6 +26,7 @@ import (
 	manifest "github.com/jemurai/s3s2/manifest"
 	options "github.com/jemurai/s3s2/options"
 	s3helper "github.com/jemurai/s3s2/s3"
+	utils "github.com/jemurai/s3s2/utils"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -64,6 +65,7 @@ var decryptCmd = &cobra.Command{
 				}
 			}
 			wg.Wait()
+			utils.CleanupDirectory(opts.Destination + m.Folder)
 		} else {
 			decryptFile(opts.File, opts)
 		}
@@ -94,6 +96,9 @@ func decryptFile(file string, options options.Options) {
 
 	log.Debugf("\tDecompressing file: %s", fn)
 	fn = archive.UnZipFile(fn, options.Destination)
+	// utils.CleanupFile(options.Directory)
+	// utils.CleanupFile(fn + ".gpg")
+
 	timing(encryptTime, "\tDecompress time (sec): %f")
 	timing(start, "Total time: %f")
 	log.Debugf("\tProcessed %s", fn)
