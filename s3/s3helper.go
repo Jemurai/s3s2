@@ -48,7 +48,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 	}
 
 	basename := filepath.Base(f.Name())
-	aws_key := utils.OsGnostic_HandleAwsKey(options.Org, folder, basename)
+	aws_key := utils.OsAgnostic_HandleAwsKey(options.Org, folder, basename)
 
 	if options.AwsKey != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{

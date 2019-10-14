@@ -28,7 +28,7 @@ func CleanupDirectory(fn string) {
 }
 
 
-func OsGnostic_HandleAwsKey(org string, folder string, fn string) string {
+func OsAgnostic_HandleAwsKey(org string, folder string, fn string) string {
 	return filepath.ToSlash(filepath.Clean(filepath.Join(org, folder, fn)))
 }
 

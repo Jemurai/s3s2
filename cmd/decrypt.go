@@ -61,7 +61,7 @@ var decryptCmd = &cobra.Command{
 				if !strings.HasSuffix(m.Files[i].Name, "manifest.json") {
 					wg.Add(1)
 
-					f := utils.OsGnostic_HandleAwsKey(org, folder, m.Files[i].Name + ".zip.gpg")
+					f := utils.OsAgnostic_HandleAwsKey(org, folder, m.Files[i].Name + ".zip.gpg")
 
 					go func(f string, opts options.Options) {
 						defer wg.Done()
