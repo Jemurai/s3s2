@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -53,11 +52,17 @@ var decryptCmd = &cobra.Command{
 			}
 
 			m := manifest.ReadManifest(fn)
+
+			org := m.Organization
+			folder := m.Folder
+
 			var wg sync.WaitGroup
 			for i := 0; i < len(m.Files); i++ {
 				if !strings.HasSuffix(m.Files[i].Name, "manifest.json") {
 					wg.Add(1)
-					f := filepath.Clean(m.Folder + "/" + m.Files[i].Name + ".zip.gpg")
+
+					f := utils.OsGnostic_HandleAwsKey(org, folder, m.Files[i].Name + ".zip.gpg")
+
 					go func(f string, opts options.Options) {
 						defer wg.Done()
 						decryptFile(f, opts)
@@ -65,11 +70,11 @@ var decryptCmd = &cobra.Command{
 				}
 			}
 			wg.Wait()
-			utils.CleanupDirectory(opts.Destination + m.Folder)
 		} else {
 			decryptFile(opts.File, opts)
 		}
-		timing(start, "Elasped time: %f")
+		timing(start, "Elapsed time: %f")
+		utils.CleanupDirectory(opts.Destination + m.Folder)
 	},
 }
 

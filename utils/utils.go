@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -25,3 +26,9 @@ func CleanupDirectory(fn string) {
 		log.Debugf("\tCleaned up: %s", fn)
 	}
 }
+
+
+func OsGnostic_HandleAwsKey(org string, folder string, fn string) string {
+	return filepath.ToSlash(filepath.Clean(filepath.Join(org, folder, fn)))
+}
+

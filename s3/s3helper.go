@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	options "github.com/jemurai/s3s2/options"
 	log "github.com/sirupsen/logrus"
+	utils "github.com/jemurai/s3s2/utils"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -47,10 +47,13 @@ func UploadFile(folder string, filename string, options options.Options) error {
 		return fmt.Errorf("failed to open file %q, %v", filename, err)
 	}
 
+	basename := filepath.Base(f.Name())
+	aws_key := utils.OsGnostic_HandleAwsKey(options.Org, folder, basename)
+
 	if options.AwsKey != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket:               aws.String(options.Bucket),
-			Key:                  aws.String(filepath.Clean(folder + "/" + strings.Replace(f.Name(), options.Directory, "", -1))),
+			Key:                  aws.String(aws_key),
 			ServerSideEncryption: aws.String("aws:kms"),
 			SSEKMSKeyId:          aws.String(options.AwsKey),
 			Body:                 f,
@@ -62,7 +65,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(options.Bucket),
-			Key:    aws.String(filepath.Clean(folder + "/" + strings.Replace(f.Name(), options.Directory, "", -1))),
+			Key:    aws.String(aws_key),
 			Body:   f,
 		})
 		if err != nil {
