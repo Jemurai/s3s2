@@ -70,11 +70,12 @@ var decryptCmd = &cobra.Command{
 				}
 			}
 			wg.Wait()
+			utils.CleanupDirectory(opts.Destination + m.Folder)
+
 		} else {
 			decryptFile(opts.File, opts)
 		}
 		timing(start, "Elapsed time: %f")
-		utils.CleanupDirectory(opts.Destination + m.Folder)
 	},
 }
 
