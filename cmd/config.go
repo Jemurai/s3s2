@@ -51,6 +51,7 @@ var configCmd = &cobra.Command{
 			Prefix:    prefix,
 			PubKey:    pubkey,
 			SSMPubKey: ssmpubkey,
+			SSMPrivKey: ssmprivkey,
 		}
 		data, _ := json.MarshalIndent(bc, "", " ")
 		err := ioutil.WriteFile(fn, data, 0644)

@@ -16,6 +16,8 @@ var bucket string
 var region string
 var pubkey string
 var privkey string
+var ssmpubkey string
+var ssmprivkey string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{

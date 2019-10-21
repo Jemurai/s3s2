@@ -58,24 +58,25 @@ that it will be encrypted.`,
 	},
 }
 
-func processFile(folder string, fn string, options options.Options) {
+func processFile(folder string, fn string, opts options.Options) {
 	log.Debugf("Processing %s", fn)
 	start := time.Now()
-	fn = archive.ZipFile(options.Directory+fn, options)
+	fn = archive.ZipFile(opts.Directory+fn, opts)
 	//fn = archive.ZipFile(fn)
 	archiveTime := timing(start, "\tArchive time (sec): %f")
 	log.Debugf("\tCompressing file: %s", fn)
-	if options.PubKey != "" {
-	    log.Debug("here")
-		encrypt.Encrypt(options.PubKey, fn)
-		fn = fn + ".gpg"
-	}
+	log.Debug(opts.PubKey)
+
+	encrypt.Encrypt(fn, opts)
+	fn = fn + ".gpg"
+
 	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
-	err := aws_helpers.UploadFile(folder, fn, options)
+	err := aws_helpers.UploadFile(folder, fn, opts)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+    log.Debug("cleaning")
 	utils.CleanupFile(fn)
 	if strings.HasSuffix(fn, ".gpg") {
 		zipName := strings.TrimSuffix(fn, ".gpg")

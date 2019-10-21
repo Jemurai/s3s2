@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+var opts options.Options
 
 // decryptCmd represents the decrypt command
 var decryptCmd = &cobra.Command{
@@ -39,7 +40,6 @@ var decryptCmd = &cobra.Command{
 			}
 
 			m := manifest.ReadManifest(fn)
-
 			org := m.Organization
 			folder := m.Folder
 
@@ -66,11 +66,11 @@ var decryptCmd = &cobra.Command{
 	},
 }
 
-func decryptFile(file string, options options.Options) {
+func decryptFile(file string, opts options.Options) {
 	log.Debugf("Processing %s", file)
 	start := time.Now()
 
-	fn, err := aws_helpers.DownloadFile(options.Destination, file, options)
+	fn, err := aws_helpers.DownloadFile(opts.Destination, file, opts)
 
 	if err != nil {
 		log.Fatal(err)
@@ -82,15 +82,15 @@ func decryptFile(file string, options options.Options) {
 
 	encryptTime := time.Now()
 
-    if options.PrivKey != "" && strings.HasSuffix(file, ".gpg") {
+    if opts.PrivKey != "" && strings.HasSuffix(file, ".gpg") {
 		log.Debugf("Would be decrypting here... %s", fn)
-		encrypt.Decrypt(fn, options.PubKey, options.PrivKey)
+		encrypt.Decrypt(fn, opts)
 		fn = strings.TrimSuffix(fn, ".gpg")
 		encryptTime = timing(downloadTime, "\tDecrypt time (sec): %f")
 	}
 
 	log.Debugf("\tDecompressing file: %s", fn)
-	fn = archive.UnZipFile(fn, options.Destination)
+	fn = archive.UnZipFile(fn, opts.Destination)
 	// utils.CleanupFile(options.Directory)
 	// utils.CleanupFile(fn + ".gpg")
 
@@ -110,6 +110,8 @@ func buildDecryptOptions() options.Options {
 	region := viper.GetString("region")
 	privKey := viper.GetString("my-private-key")
 	pubKey := viper.GetString("my-public-key")
+	ssmPrivKey := viper.GetString("ssm-private-key")
+	ssmPubKey := viper.GetString("ssm-public-key")
 
 	options := options.Options{
 		Bucket:      bucket,
@@ -118,7 +120,8 @@ func buildDecryptOptions() options.Options {
 		Region:      region,
 		PrivKey:     privKey,
 		PubKey:      pubKey,
-
+		SSMPrivKey:  ssmPrivKey,
+		SSMPubKey:   ssmPubKey,
 	}
 
 	debug := viper.GetBool("debug")
@@ -154,14 +157,18 @@ func init() {
 	decryptCmd.MarkFlagRequired("file")
 	decryptCmd.PersistentFlags().String("destination", "", "The destination directory to decrypt and unzip.")
 	decryptCmd.MarkFlagRequired("destination")
+
 	decryptCmd.PersistentFlags().String("my-private-key", "", "The receiver's private key.  A local file path.")
 	decryptCmd.PersistentFlags().String("my-public-key", "", "The receiver's public key.  A local file path.")
+    decryptCmd.PersistentFlags().String("ssm-private-key", "", "The receiver's private key.  A parameter name in SSM.")
+	decryptCmd.PersistentFlags().String("ssm-public-key", "", "The receiver's public key.  A parameter name in SSM.")
 
 	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
 	viper.BindPFlag("destination", decryptCmd.PersistentFlags().Lookup("destination"))
 	viper.BindPFlag("my-private-key", decryptCmd.PersistentFlags().Lookup("my-private-key"))
 	viper.BindPFlag("my-public-key", decryptCmd.PersistentFlags().Lookup("my-public-key"))
-
+    viper.BindPFlag("ssm-private-key", decryptCmd.PersistentFlags().Lookup("ssm-private-key"))
+	viper.BindPFlag("ssm-public-key", decryptCmd.PersistentFlags().Lookup("ssm-public-key"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})
