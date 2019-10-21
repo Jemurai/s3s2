@@ -24,7 +24,7 @@ import (
 	"github.com/jemurai/s3s2/encrypt"
 	manifest "github.com/jemurai/s3s2/manifest"
 	options "github.com/jemurai/s3s2/options"
-	s3helper "github.com/jemurai/s3s2/s3"
+	s3helper "github.com/jemurai/s3s2/aws_helpers"
 	utils "github.com/jemurai/s3s2/utils"
 
 	log "github.com/sirupsen/logrus"
