@@ -14,7 +14,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/jemurai/s3s2/options"
+	"github.com/tempuslabs/s3s2/options"
 )
 
 // FileDescription is meta info about a file we will want to

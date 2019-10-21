@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os/user"
 
-	"github.com/jemurai/s3s2/options"
+	"github.com/tempuslabs/s3s2/options"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/c-bata/go-prompt"
@@ -37,8 +37,11 @@ var configCmd = &cobra.Command{
 		fmt.Println("Please specify a file prefix (nothing sensitive).")
 		prefix := prompt.Input("> ", completer)
 
-		fmt.Println("Please specify a public key to use (file path or url).")
+		fmt.Println("Please specify a public key to use (file path or url). Leave blank if intending to use SSM.")
 		pubkey := prompt.Input("> ", completer)
+
+		fmt.Println("Please specify an ssm parameter name corresponding to the public key.")
+        ssmpubkey := prompt.Input("> ", completer)
 
 		bc := options.Options{
 			Directory: dir,
@@ -47,6 +50,7 @@ var configCmd = &cobra.Command{
 			Region:    region,
 			Prefix:    prefix,
 			PubKey:    pubkey,
+			SSMPubKey: ssmpubkey,
 		}
 		data, _ := json.MarshalIndent(bc, "", " ")
 		err := ioutil.WriteFile(fn, data, 0644)

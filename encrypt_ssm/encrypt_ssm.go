@@ -1,5 +1,5 @@
 
-package encrypt
+package encrypt_ssm
 
 import (
 	"compress/gzip"
@@ -13,6 +13,9 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
+	options "github.com/tempuslabs/s3s2/options"
+
 
 	// For the signature algorithm.
 	_ "golang.org/x/crypto/ripemd160"
@@ -39,56 +42,52 @@ import (
 // https://github.com/hashicorp/vault/blob/master/command/pgp_test.go
 
 // Decrypt a file with a provided key.
-func Decrypt(filename string, pubkey string, privkey string) {
-	decryptFile(pubkey, privkey, filename)
+func DecryptSSM(filename string, options options.Options) {
+	decryptFileSSM(options, filename)
 }
 
 // Encrypt a file
-func Encrypt(pubkey string, filename string) {
-	encryptFile(pubkey, filename)
+func Encrypt(filename string, pubkey string, options options.Options) {
+	encryptFile(pubkey, filename, options)
 }
 
-func decodePrivateKey(filename string) *packet.PrivateKey {
 
-	// open ascii armored private key
-	in, err := os.Open(filename)
-	if err != nil {
-		log.Error(err)
-	}
-	defer in.Close()
+func decodePrivateKeyfromSSM(ssm_key string, options options.Options) *packet.PrivateKey {
 
-	block, err := armor.Decode(in)
-	if err != nil {
-		log.Error(err)
-	}
+    key := aws_helpers.GetParameterValue(ssm_key, options)
+    io_key := strings.NewReader(key)
+    io_key.Seek(0,0)
 
-	if block.Type != openpgp.PrivateKeyType {
-		log.Error("Invalid private key file")
-	}
-
-	reader := packet.NewReader(block.Body)
-	pkt, err := reader.Next()
+	block, err := armor.Decode(io_key)
 	if err != nil {
 		log.Error(err)
 	}
 
-	key, ok := pkt.(*packet.PrivateKey)
-	if !ok {
-		log.Error("Invalid private key")
-	}
-	return key
+    if block.Type != openpgp.PrivateKeyType {
+        log.Error("Invalid private key file")
+    }
+
+    reader := packet.NewReader(block.Body)
+    pkt, err := reader.Next()
+    if err != nil {
+        log.Error(err)
+    }
+
+    result_key, ok := pkt.(*packet.PrivateKey)
+    if !ok {
+        log.Error("Invalid private key")
+    }
+
+    return result_key
 }
 
-func decodePublicKey(filename string) *packet.PublicKey {
+func decodePublicKeyfromSSM(ssm_key string, options options.Options) *packet.PublicKey {
 
-	// open ascii armored public key
-	in, err := os.Open(filename)
-	if err != nil {
-		log.Error(err)
-	}
-	defer in.Close()
+    key := aws_helpers.GetParameterValue(ssm_key, options)
+    io_key := strings.NewReader(key)
+    io_key.Seek(0,0)
 
-	block, err := armor.Decode(in)
+	block, err := armor.Decode(io_key)
 	if err != nil {
 		log.Error(err)
 	}
@@ -99,16 +98,19 @@ func decodePublicKey(filename string) *packet.PublicKey {
 
 	reader := packet.NewReader(block.Body)
 	pkt, err := reader.Next()
+
 	if err != nil {
 		log.Error(err)
 	}
 
-	key, ok := pkt.(*packet.PublicKey)
+	result_key, ok := pkt.(*packet.PublicKey)
 	if !ok {
 		log.Error("Invalid public key")
 	}
-	return key
+
+	return result_key
 }
+
 
 func getEncryptionConfig() packet.Config {
 	config := packet.Config{
@@ -174,11 +176,11 @@ func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) 
 	return &e
 }
 
-func encryptFile(publicKey string, file string) {
-	pubKey := decodePublicKey(publicKey)
+func encryptFile(publicKey string, file string, options options.Options) {
+
+	pubKey := decodePublicKeyfromSSM(publicKey, options)
 
 	config := getEncryptionConfig()
-	//	privKey := decodePrivateKey(privateKey)
 	to := createEntityFromKeys(pubKey, nil) // We shouldn't have the receiver's private key!!!
 
 	ofile, err := os.Create(file + ".gpg")
@@ -219,13 +221,14 @@ func encryptFile(publicKey string, file string) {
 	compressed.Close()
 }
 
-func decryptFile(publicKey string, privateKey string, file string) {
-	pubKey := decodePublicKey(publicKey)
-	privKey := decodePrivateKey(privateKey)
+func decryptFileSSM(options options.Options, file string) {
+
+	pubKey := decodePublicKeyfromSSM(options.SSMPubKey, options)
+	privKey := decodePrivateKeyfromSSM(options.SSMPrivKey, options)
 
 	entity := createEntityFromKeys(pubKey, privKey)
 
-	in, err := os.Open(file)
+   	in, err := os.Open(file)
 	if err != nil {
 		log.Error(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	archive "github.com/tempuslabs/s3s2/archive"
-	"github.com/tempuslabs/s3s2/encrypt"
+	encrypt_ssm "github.com/tempuslabs/s3s2/encrypt_ssm"
 	manifest "github.com/tempuslabs/s3s2/manifest"
 	options "github.com/tempuslabs/s3s2/options"
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
@@ -19,17 +19,19 @@ import (
 	"github.com/spf13/viper"
 )
 
+var ops options.Options
 
 // decryptCmd represents the decrypt command
-var decryptCmd = &cobra.Command{
-	Use:   "decrypt",
+var decryptSSMCmd = &cobra.Command{
+	Use:   "decrypt-ssm",
 	Short: "Retrieve files that are stored securely in S3 and decrypt them",
 	Long:  `Retrieve files that are stored securely in S3 and decrypt them`,
 
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
-		opts := buildDecryptOptions()
-		checkDecryptOptions(opts)
+		opts := buildDecryptSSMOptions()
+		log.Debug(opts)
+		checkDecryptSSMOptions(opts)
 
 		if strings.HasSuffix(opts.File, "manifest.json") {
 			log.Debugf("manifest file: %s, %s", opts.Destination, opts.File)
@@ -39,7 +41,6 @@ var decryptCmd = &cobra.Command{
 			}
 
 			m := manifest.ReadManifest(fn)
-
 			org := m.Organization
 			folder := m.Folder
 
@@ -52,7 +53,7 @@ var decryptCmd = &cobra.Command{
 
 					go func(f string, opts options.Options) {
 						defer wg.Done()
-						decryptFile(f, opts)
+						decryptFileSSM(f, opts)
 					}(f, opts)
 				}
 			}
@@ -60,13 +61,13 @@ var decryptCmd = &cobra.Command{
 			utils.CleanupDirectory(opts.Destination + m.Folder)
 
 		} else {
-			decryptFile(opts.File, opts)
+			decryptFileSSM(opts.File, opts)
 		}
 		timing(start, "Elapsed time: %f")
 	},
 }
 
-func decryptFile(file string, options options.Options) {
+func decryptFileSSM(file string, options options.Options) {
 	log.Debugf("Processing %s", file)
 	start := time.Now()
 
@@ -82,9 +83,10 @@ func decryptFile(file string, options options.Options) {
 
 	encryptTime := time.Now()
 
-    if options.PrivKey != "" && strings.HasSuffix(file, ".gpg") {
-		log.Debugf("Would be decrypting here... %s", fn)
-		encrypt.Decrypt(fn, options.PubKey, options.PrivKey)
+    // if fetching keys from SSM store
+	if options.SSMPubKey != "" && options.SSMPrivKey != "" {
+        log.Debugf("Would be decrypting here... %s", fn)
+		encrypt_ssm.DecryptSSM(fn, options)
 		fn = strings.TrimSuffix(fn, ".gpg")
 		encryptTime = timing(downloadTime, "\tDecrypt time (sec): %f")
 	}
@@ -99,26 +101,24 @@ func decryptFile(file string, options options.Options) {
 	log.Debugf("\tProcessed %s", fn)
 }
 
-func buildDecryptOptions() options.Options {
+func buildDecryptSSMOptions() options.Options {
 	bucket := viper.GetString("bucket")
 	file := viper.GetString("file")
 	destination := viper.GetString("destination")
 	if !strings.HasSuffix(destination, "/") {
 		destination = destination + "/"
 	}
-
 	region := viper.GetString("region")
-	privKey := viper.GetString("my-private-key")
-	pubKey := viper.GetString("my-public-key")
+	SSMPrivKey := viper.GetString("ssm-private-key")
+	SSMPubKey := viper.GetString("ssm-public-key")
 
 	options := options.Options{
 		Bucket:      bucket,
 		File:        file,
 		Destination: destination,
 		Region:      region,
-		PrivKey:     privKey,
-		PubKey:      pubKey,
-
+		SSMPrivKey:  SSMPrivKey,
+		SSMPubKey:   SSMPubKey,
 	}
 
 	debug := viper.GetBool("debug")
@@ -131,7 +131,7 @@ func buildDecryptOptions() options.Options {
 	return options
 }
 
-func checkDecryptOptions(options options.Options) {
+func checkDecryptSSMOptions(options options.Options) {
 	if options.File == "" {
 		log.Warn("Need to supply a file to decrypt.  Should be the file path within the dbucket but not including the dbucket.")
 		log.Panic("Insufficient information to perform decryption.")
@@ -148,20 +148,19 @@ func checkDecryptOptions(options options.Options) {
 }
 
 func init() {
-	rootCmd.AddCommand(decryptCmd)
+	rootCmd.AddCommand(decryptSSMCmd)
 
-	decryptCmd.PersistentFlags().String("file", "", "The path to the file to decrypt.  Can be manifest or single file.")
-	decryptCmd.MarkFlagRequired("file")
-	decryptCmd.PersistentFlags().String("destination", "", "The destination directory to decrypt and unzip.")
-	decryptCmd.MarkFlagRequired("destination")
-	decryptCmd.PersistentFlags().String("my-private-key", "", "The receiver's private key.  A local file path.")
-	decryptCmd.PersistentFlags().String("my-public-key", "", "The receiver's public key.  A local file path.")
+	decryptSSMCmd.PersistentFlags().String("file", "", "The path to the file to decrypt.  Can be manifest or single file.")
+	decryptSSMCmd.MarkFlagRequired("file")
+	decryptSSMCmd.PersistentFlags().String("destination", "", "The destination directory to decrypt and unzip.")
+	decryptSSMCmd.MarkFlagRequired("destination")
+	decryptSSMCmd.PersistentFlags().String("ssm-private-key", "", "The receiver's private key.  A parameter name in SSM.")
+	decryptSSMCmd.PersistentFlags().String("ssm-public-key", "", "The receiver's public key.  A parameter name in SSM.")
 
-	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
-	viper.BindPFlag("destination", decryptCmd.PersistentFlags().Lookup("destination"))
-	viper.BindPFlag("my-private-key", decryptCmd.PersistentFlags().Lookup("my-private-key"))
-	viper.BindPFlag("my-public-key", decryptCmd.PersistentFlags().Lookup("my-public-key"))
-
+	viper.BindPFlag("file", decryptSSMCmd.PersistentFlags().Lookup("file"))
+	viper.BindPFlag("destination", decryptSSMCmd.PersistentFlags().Lookup("destination"))
+	viper.BindPFlag("ssm-private-key", decryptSSMCmd.PersistentFlags().Lookup("ssm-private-key"))
+	viper.BindPFlag("ssm-public-key", decryptSSMCmd.PersistentFlags().Lookup("ssm-public-key"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})

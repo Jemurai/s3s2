@@ -12,12 +12,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	archive "github.com/jemurai/s3s2/archive"
-	encrypt "github.com/jemurai/s3s2/encrypt"
-	manifest "github.com/jemurai/s3s2/manifest"
-	options "github.com/jemurai/s3s2/options"
-	s3helper "github.com/jemurai/s3s2/aws_helpers"
-	utils "github.com/jemurai/s3s2/utils"
+	archive "github.com/tempuslabs/s3s2/archive"
+	encrypt "github.com/tempuslabs/s3s2/encrypt"
+	manifest "github.com/tempuslabs/s3s2/manifest"
+	options "github.com/tempuslabs/s3s2/options"
+	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
+	utils "github.com/tempuslabs/s3s2/utils"
 )
 
 // shareCmd represents the share command
@@ -39,7 +39,7 @@ that it will be encrypted.`,
 
 		m := manifest.BuildManifest(folder, opts)
 
-		if err := s3helper.UploadFile(folder, opts.Directory+m.Name, opts); err != nil {
+		if err := aws_helpers.UploadFile(folder, opts.Directory+m.Name, opts); err != nil {
 			log.Error(err)
 		}
 		utils.CleanupFile(opts.Directory + m.Name)
@@ -66,11 +66,12 @@ func processFile(folder string, fn string, options options.Options) {
 	archiveTime := timing(start, "\tArchive time (sec): %f")
 	log.Debugf("\tCompressing file: %s", fn)
 	if options.PubKey != "" {
-		encrypt.Encrypt(fn, options.PubKey)
+	    log.Debug("here")
+		encrypt.Encrypt(options.PubKey, fn)
 		fn = fn + ".gpg"
 	}
 	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
-	err := s3helper.UploadFile(folder, fn, options)
+	err := aws_helpers.UploadFile(folder, fn, options)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,14 +1,14 @@
 
-package s3
+package aws_helpers
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
 
-	options "github.com/jemurai/s3s2/options"
+	options "github.com/tempuslabs/s3s2/options"
 	log "github.com/sirupsen/logrus"
-	utils "github.com/jemurai/s3s2/utils"
+	utils "github.com/tempuslabs/s3s2/utils"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"

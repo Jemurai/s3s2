@@ -1,4 +1,4 @@
-module github.com/jemurai/s3s2
+module github.com/tempuslabs/s3s2
 
 go 1.12
 
