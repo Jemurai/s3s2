@@ -15,7 +15,7 @@
 package archive
 
 import (
-	"github.com/jemurai/s3s2/options"
+	"github.com/tempuslabs/s3s2/options"
 	"archive/zip"
 	"io"
 	"os"

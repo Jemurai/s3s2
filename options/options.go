@@ -8,6 +8,7 @@ type Options struct {
 
 	// Encrypt only
 	PubKey    string `json:"pubkey"`
+	SSMPubKey string `json:"ssmpubkey"`
 	Directory string `json:"directory"`
 	AwsKey    string `json:"awskey"`
 	Org       string `json:"org"`
@@ -18,4 +19,5 @@ type Options struct {
 	File        string `json:"file"`
 	Destination string `json:"destination"`
 	PrivKey     string `json:"privkey"`
+	SSMPrivKey string `json:"ssmprivkey"`
 }

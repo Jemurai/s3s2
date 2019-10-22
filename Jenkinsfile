@@ -1,14 +1,16 @@
 pipeline {
     agent {
         docker {
-            image 'golang:1.12.9-alpine3.10'
+            image 'golang'
         }
     }
     stages {
         stage('build') {
             steps {
-                sh 'make build'
-            }
+                sh script: "chmod u+x ./deploy_build.sh", label: "Permissioning build file..."
+                sh script: "./deploy_build.sh", label: "Building..."
+                sh script: 'echo Built successfully!', label: "Build successful!"
+                }
         }
         stage('publish') {
             steps {

@@ -40,20 +40,20 @@ Please specify a bucket.
 Please specify a region.
 > us-east-1
 Please specify an org.
-> Jemurai
+> tempuslabs
 Please specify a working directory.
 > ~/Desktop/s3s2/
 Please specify a file prefix (nothing sensitive).
-> jemurai_
+> tempuslabs_
 Please specify a public key to use (file path or url).
-> https://s3s2.jemurai.com/.well_known/s3s2-pub.asc
+> https://s3s2.tempuslabs.com/.well_known/s3s2-pub.asc
 Your config was written to /Users/mk/s3s2-demo.json . You can invoke with s3s2 --config /Users/mk/s3s2-demo.json
 ```
 
 ## Building S3S2
 
 Since Go provides the ability to cross compile, here are some of the common commands: 
-`GOOS=linux GOARCH=amd64 go build -v github.com/jemurai/s3s2`
+`GOOS=linux GOARCH=amd64 go build -v github.com/tempuslabs/s3s2`
 
 `go build`
 
@@ -63,4 +63,4 @@ You can see the code level documentation by running:  `godoc -http=:6060` and vi
 
 # Get Help
 
-Feel free to create issues on [the project](https://github.com/jemurai/s3s2) to ask questions or come find us on [Gitter](https://gitter.im/jemurai-oss/s3s2) to have a chat. 
+Feel free to create issues on [the project](https://github.com/tempuslabs/s3s2) to ask questions or come find us on [Gitter](https://gitter.im/tempuslabs-oss/s3s2) to have a chat.

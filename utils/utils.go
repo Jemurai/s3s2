@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -32,3 +33,17 @@ func OsAgnostic_HandleAwsKey(org string, folder string, fn string) string {
 	return filepath.ToSlash(filepath.Clean(filepath.Join(org, folder, fn)))
 }
 
+
+func IsFilePath(key string) bool {
+    info, err := os.Stat(key)
+
+    log.Debug(err.Error())
+
+    if os.IsNotExist(err) {
+        return false
+    } else if strings.Contains(err.Error(), "file name too long") {
+        return false
+    }
+
+    return !info.IsDir()
+}

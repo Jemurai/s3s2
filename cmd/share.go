@@ -1,16 +1,3 @@
-// Copyright © 2019 Matt Konda <mkonda@jemurai.com>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 package cmd
 
@@ -25,12 +12,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	archive "github.com/jemurai/s3s2/archive"
-	encrypt "github.com/jemurai/s3s2/encrypt"
-	manifest "github.com/jemurai/s3s2/manifest"
-	options "github.com/jemurai/s3s2/options"
-	s3helper "github.com/jemurai/s3s2/s3"
-	utils "github.com/jemurai/s3s2/utils"
+	archive "github.com/tempuslabs/s3s2/archive"
+	encrypt "github.com/tempuslabs/s3s2/encrypt"
+	manifest "github.com/tempuslabs/s3s2/manifest"
+	options "github.com/tempuslabs/s3s2/options"
+	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
+	utils "github.com/tempuslabs/s3s2/utils"
 )
 
 // shareCmd represents the share command
@@ -52,7 +39,7 @@ that it will be encrypted.`,
 
 		m := manifest.BuildManifest(folder, opts)
 
-		if err := s3helper.UploadFile(folder, opts.Directory+m.Name, opts); err != nil {
+		if err := aws_helpers.UploadFile(folder, opts.Directory+m.Name, opts); err != nil {
 			log.Error(err)
 		}
 		utils.CleanupFile(opts.Directory + m.Name)
@@ -71,23 +58,25 @@ that it will be encrypted.`,
 	},
 }
 
-func processFile(folder string, fn string, options options.Options) {
+func processFile(folder string, fn string, opts options.Options) {
 	log.Debugf("Processing %s", fn)
 	start := time.Now()
-	fn = archive.ZipFile(options.Directory+fn, options)
+	fn = archive.ZipFile(opts.Directory+fn, opts)
 	//fn = archive.ZipFile(fn)
 	archiveTime := timing(start, "\tArchive time (sec): %f")
 	log.Debugf("\tCompressing file: %s", fn)
-	if options.PubKey != "" {
-		encrypt.Encrypt(fn, options.PubKey)
-		fn = fn + ".gpg"
-	}
+	log.Debug(opts.PubKey)
+
+	encrypt.Encrypt(fn, opts)
+	fn = fn + ".gpg"
+
 	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
-	err := s3helper.UploadFile(folder, fn, options)
+	err := aws_helpers.UploadFile(folder, fn, opts)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+    log.Debug("cleaning")
 	utils.CleanupFile(fn)
 	if strings.HasSuffix(fn, ".gpg") {
 		zipName := strings.TrimSuffix(fn, ".gpg")
