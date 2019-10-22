@@ -53,7 +53,7 @@ func Encrypt(filename string, opts options.Options) {
 	encryptFile(filename, opts)
 }
 
-func GetKey(opts options.Options) *armor.Block {
+func getKey(opts options.Options) *armor.Block {
     var in io.Reader
     var err error
 
@@ -81,7 +81,7 @@ func GetKey(opts options.Options) *armor.Block {
 
 func decodePrivateKey(opts options.Options) *packet.PrivateKey {
 
-    block := GetKey(opts)
+    block := getKey(opts)
 
 	if block.Type != openpgp.PrivateKeyType {
 		log.Error("Invalid private key file")
@@ -102,7 +102,7 @@ func decodePrivateKey(opts options.Options) *packet.PrivateKey {
 
 func decodePublicKey(opts options.Options) *packet.PublicKey {
 
-    block := GetKey(opts)
+    block := getKey(opts)
 
 	if block.Type != openpgp.PublicKeyType {
 		log.Error("Invalid private key file")
