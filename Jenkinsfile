@@ -7,7 +7,6 @@ pipeline {
     stages {
         stage('build') {
             steps {
-                sh script: "chmod u+x ./deploy_build.sh", label: "Permissioning build file..."
                 sh script: "./deploy_build.sh", label: "Building..."
                 sh script: 'echo Built successfully!', label: "Build successful!"
                 }
@@ -23,8 +22,8 @@ pipeline {
                 NEXUS_PATH = 'https://nexus.securetempus.com/repository/tempus-n'
             }
             steps {
-                // Fun stuff it **** anything similar to NEXUS_CREDS
-                sh script:'echo $NEXUS_CREDS_USR should be leeroy-tempus-n if this worked :pray:', label: "Checking creds"
+                // Fun stuff it will mask out with **** anything similar to NEXUS_CREDS
+                // ${GIT_COMMIT} is the commit hash if you want to use that
                 sh script: 'curl --fail --user "${NEXUS_CREDS}" --upload-file ./linux/s3s2-linux-amd64 ${NEXUS_PATH}/s3s2-linux-amd64', label: "Publishing Linux build"
                 sh script: 'curl --fail --user "${NEXUS_CREDS}" --upload-file ./darwin/s3s2-darwin-amd64 ${NEXUS_PATH}/s3s2-darwin-amd64', label: "Publishing Mac build"
                 sh script: 'curl --fail --user "${NEXUS_CREDS}" --upload-file ./windows/s3s2-windows-amd64.exe ${NEXUS_PATH}/s3s2-windows-amd64.exe', label: "Publishing Windows build"
