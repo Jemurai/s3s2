@@ -49,7 +49,6 @@ func Decrypt(filename string, opts options.Options) {
 
 // Encrypt a file
 func Encrypt(filename string, opts options.Options) {
-    log.Debug(opts)
 	encryptFile(filename, opts)
 }
 
