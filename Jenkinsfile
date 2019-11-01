@@ -9,6 +9,7 @@ pipeline {
             steps {
                 sh script: "./deploy_build.sh", label: "Building..."
                 sh script: 'echo Built successfully!', label: "Build successful!"
+                sh script: "echo printenv"
                 }
         }
         stage('publish') {
