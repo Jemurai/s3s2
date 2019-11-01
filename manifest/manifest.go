@@ -57,6 +57,7 @@ func ReadManifest(file string) Manifest {
 // It reads the contents of the directory and captures the file names,
 // owners, dates and user into a manifest.json file.
 func BuildManifest(folder string, options options.Options) Manifest {
+    log.Info("Building manifest...")
 	var files []FileDescription
 	err := filepath.Walk(options.Directory,
 		func(path string, info os.FileInfo, err error) error {
@@ -65,8 +66,10 @@ func BuildManifest(folder string, options options.Options) Manifest {
 			}
 			if !info.IsDir() && !strings.HasSuffix(path, "manifest.json") {
 				sha256hash := hash(path, options)
+				log.Debugf("Registering file '%s' to manifest...", path)
 				files = append(files, FileDescription{strings.Replace(path, options.Directory, "", -1), info.Size(), info.ModTime(), sha256hash})
 			}
+
 			return nil
 		})
 	if err != nil {
@@ -94,9 +97,9 @@ func BuildManifest(folder string, options options.Options) Manifest {
 func CleanupFile(fn string) {
 	var err = os.Remove(fn)
 	if err != nil {
-		log.Warnf("\tIssue deleting file: %s", fn)
+		log.Warnf("\tIssue deleting file: '%s'", fn)
 	} else {
-		log.Debugf("\tCleaned up: %s", fn)
+		log.Debugf("\tCleaned up: '%s'", fn)
 	}
 }
 

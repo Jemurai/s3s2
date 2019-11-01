@@ -54,18 +54,17 @@ that it will be encrypted.`,
 			}(folder, fn, opts)
 		}
 		wg.Wait()
-		timing(start, "Elasped time: %f")
+		timing(start, "Elapsed time: %f")
 	},
 }
 
 func processFile(folder string, fn string, opts options.Options) {
-	log.Debugf("Processing %s", fn)
+	log.Debugf("Processing '%s'", fn)
 	start := time.Now()
 	fn = archive.ZipFile(opts.Directory+fn, opts)
 	//fn = archive.ZipFile(fn)
 	archiveTime := timing(start, "\tArchive time (sec): %f")
-	log.Debugf("\tCompressing file: %s", fn)
-	log.Debug(opts.PubKey)
+	log.Debugf("\tCompressing file: '%s'", fn)
 
 	encrypt.Encrypt(fn, opts)
 	fn = fn + ".gpg"
@@ -76,7 +75,7 @@ func processFile(folder string, fn string, opts options.Options) {
 		log.Fatal(err)
 	}
 
-    log.Debug("cleaning")
+    log.Debug("Cleaning...")
 	utils.CleanupFile(fn)
 	if strings.HasSuffix(fn, ".gpg") {
 		zipName := strings.TrimSuffix(fn, ".gpg")
@@ -84,7 +83,7 @@ func processFile(folder string, fn string, opts options.Options) {
 	}
 
 	timing(encryptTime, "\tUpload time (sec): %f")
-	log.Debugf("\tProcessed %s", fn)
+	log.Debugf("\tProcessed '%s'", fn)
 }
 
 func timing(start time.Time, message string) time.Time {
@@ -98,22 +97,28 @@ func timing(start time.Time, message string) time.Time {
 // to keep track of our state while we go.
 func buildShareOptions(cmd *cobra.Command) options.Options {
 	directory := viper.GetString("directory")
+
+	awsprofile := viper.GetString("awsprofile")
+	awsKey := viper.GetString("awskey")
 	bucket := viper.GetString("bucket")
 	region := viper.GetString("region")
-	pubKey := viper.GetString("receiver-public-key")
-	awsKey := viper.GetString("awskey")
+
 	org := viper.GetString("org")
 	prefix := viper.GetString("prefix")
+
+	pubKey := viper.GetString("receiver-public-key")
 	hash := viper.GetBool("hash")
+
 
 	options := options.Options{
 		Directory: directory,
+		AwsProfile:  awsprofile,
+		AwsKey:    awsKey,
 		Bucket:    bucket,
 		Region:    region,
-		PubKey:    pubKey,
-		AwsKey:    awsKey,
 		Org:       org,
 		Prefix:    prefix,
+		PubKey:    pubKey,
 		Hash:      hash,
 	}
 
@@ -147,6 +152,7 @@ func init() {
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 	shareCmd.PersistentFlags().String("receiver-public-key", "", "The receiver's public key.  A local file path.")
 	shareCmd.PersistentFlags().Bool("hash", false, "Should the tool calculate hashes (slow)?")
+	shareCmd.PersistentFlags().String("awsprofile", "default", "AWS profile to use when establishing sessions with AWS's SDK.")
 
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
@@ -154,6 +160,8 @@ func init() {
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
 	viper.BindPFlag("receiver-public-key", shareCmd.PersistentFlags().Lookup("receiver-public-key"))
 	viper.BindPFlag("hash", shareCmd.PersistentFlags().Lookup("hash"))
+	viper.BindPFlag("awsprofile", shareCmd.PersistentFlags().Lookup("awsprofile"))
+
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})

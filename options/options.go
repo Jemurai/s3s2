@@ -5,6 +5,7 @@ type Options struct {
 	// For both encrypt/decrypt
 	Region string `json:"region"`
 	Bucket string `json:"bucket"`
+	AwsProfile string `json:"awsprofile"`
 
 	// Encrypt only
 	PubKey    string `json:"pubkey"`

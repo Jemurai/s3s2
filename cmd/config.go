@@ -40,8 +40,11 @@ var configCmd = &cobra.Command{
 		fmt.Println("Please specify a public key to use (file path or url). Leave blank if intending to use SSM.")
 		pubkey := prompt.Input("> ", completer)
 
-		fmt.Println("Please specify an ssm parameter name corresponding to the public key.")
+		fmt.Println("Please specify the ssm parameter name corresponding to the public key.")
         ssmpubkey := prompt.Input("> ", completer)
+
+        fmt.Println("Please specify an AWS profile to use by default.")
+        awsprofile := prompt.Input("> ", completer)
 
 		bc := options.Options{
 			Directory: dir,
@@ -52,6 +55,7 @@ var configCmd = &cobra.Command{
 			PubKey:    pubkey,
 			SSMPubKey: ssmpubkey,
 			SSMPrivKey: ssmprivkey,
+			AwsProfile: awsprofile,
 		}
 		data, _ := json.MarshalIndent(bc, "", " ")
 		err := ioutil.WriteFile(fn, data, 0644)

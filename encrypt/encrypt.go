@@ -16,8 +16,6 @@ import (
 	options "github.com/tempuslabs/s3s2/options"
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
 
-
-
 	// For the signature algorithm.
 	_ "golang.org/x/crypto/ripemd160"
 
@@ -185,6 +183,8 @@ func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) 
 }
 
 func encryptFile(file string, opts options.Options) {
+    log.Debugf("Encrypting file: '%s'...", file)
+
 	pubKey := decodePublicKey(opts)
 
 	config := getEncryptionConfig()
@@ -227,6 +227,8 @@ func encryptFile(file string, opts options.Options) {
 	}
 
 	compressed.Close()
+
+	log.Infof("Encrypted file: '%s'", file)
 }
 
 func decryptFile(file string, opts options.Options) {
