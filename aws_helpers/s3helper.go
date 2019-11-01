@@ -22,7 +22,7 @@ import (
 // IFF there is a key or the file has been gpg encrypted
 // for the receiver.
 func UploadFile(folder string, filename string, options options.Options) error {
-	log.Debugf("\tUploading file.")
+	log.Debugf("\tUploading file: '%s'", filename)
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(options.Region),
 	}))
@@ -31,7 +31,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 
 	f, err := os.Open(filename)
 	if err != nil {
-		return fmt.Errorf("failed to open file %q, %v", filename, err)
+		return fmt.Errorf("Failed to open file '%q', %v", filename, err)
 	}
 
 	basename := filepath.Base(f.Name())
@@ -46,9 +46,9 @@ func UploadFile(folder string, filename string, options options.Options) error {
 			Body:                 f,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to upload file, %v", err)
+			return fmt.Errorf("Failed to upload file: '%v'", err)
 		}
-		log.Debugf("\tFile uploaded to, %s\n", result.Location)
+		log.Infof("\tFile '%s' uploaded to: '%s'", filename, result.Location)
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(options.Bucket),
@@ -56,9 +56,9 @@ func UploadFile(folder string, filename string, options options.Options) error {
 			Body:   f,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to upload file, %v", err)
+			return fmt.Errorf("Failed to upload file: %v", err)
 		}
-		log.Debugf("\tFile uploaded to, %s\n", result.Location)
+		log.Infof("\tFile '%s' uploaded to: '%s'", filename, result.Location)
 	}
 	return nil
 }
@@ -93,7 +93,7 @@ func DownloadFile(directory string, pullfile string, options options.Options) (s
 		})
 	if err != nil {
 		log.Debugf("\tDownloading file (5): %s", pullfile)
-		log.Errorf("Unable to download item %q, %v", pullfile, err)
+		log.Errorf("Unable to download item '%q', %v", pullfile, err)
 	}
 	log.Debugf("\tDownloading file (6): %s", file.Name())
 	return file.Name(), nil

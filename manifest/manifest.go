@@ -65,6 +65,7 @@ func BuildManifest(folder string, options options.Options) Manifest {
 			}
 			if !info.IsDir() && !strings.HasSuffix(path, "manifest.json") {
 				sha256hash := hash(path, options)
+				log.Debugf("Registering file '%s' to manifest...", path)
 				files = append(files, FileDescription{strings.Replace(path, options.Directory, "", -1), info.Size(), info.ModTime(), sha256hash})
 			}
 			return nil
@@ -94,9 +95,9 @@ func BuildManifest(folder string, options options.Options) Manifest {
 func CleanupFile(fn string) {
 	var err = os.Remove(fn)
 	if err != nil {
-		log.Warnf("\tIssue deleting file: %s", fn)
+		log.Warnf("\tIssue deleting file: '%s'", fn)
 	} else {
-		log.Debugf("\tCleaned up: %s", fn)
+		log.Debugf("\tCleaned up: '%s'", fn)
 	}
 }
 

@@ -54,18 +54,17 @@ that it will be encrypted.`,
 			}(folder, fn, opts)
 		}
 		wg.Wait()
-		timing(start, "Elasped time: %f")
+		timing(start, "Elapsed time: %f")
 	},
 }
 
 func processFile(folder string, fn string, opts options.Options) {
-	log.Debugf("Processing %s", fn)
+	log.Debugf("Processing '%s'", fn)
 	start := time.Now()
 	fn = archive.ZipFile(opts.Directory+fn, opts)
 	//fn = archive.ZipFile(fn)
 	archiveTime := timing(start, "\tArchive time (sec): %f")
-	log.Debugf("\tCompressing file: %s", fn)
-	log.Debug(opts.PubKey)
+	log.Debugf("\tCompressing file: '%s'", fn)
 
 	encrypt.Encrypt(fn, opts)
 	fn = fn + ".gpg"
@@ -76,7 +75,7 @@ func processFile(folder string, fn string, opts options.Options) {
 		log.Fatal(err)
 	}
 
-    log.Debug("cleaning")
+    log.Debug("Cleaning...")
 	utils.CleanupFile(fn)
 	if strings.HasSuffix(fn, ".gpg") {
 		zipName := strings.TrimSuffix(fn, ".gpg")
@@ -84,7 +83,7 @@ func processFile(folder string, fn string, opts options.Options) {
 	}
 
 	timing(encryptTime, "\tUpload time (sec): %f")
-	log.Debugf("\tProcessed %s", fn)
+	log.Debugf("\tProcessed '%s'", fn)
 }
 
 func timing(start time.Time, message string) time.Time {
