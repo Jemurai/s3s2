@@ -20,11 +20,11 @@ pipeline {
                 // https://jenkins.io/doc/book/pipeline/jenkinsfile/#handling-credentials
                 NEXUS_CREDS = credentials('nexus-leeroy-tempus-n')
                 NEXUS_PATH = 'https://nexus.securetempus.com/repository/tempus-n'
-                GIT_BRANCH = sh(script: "echo ${BRANCH_NAME} == 'master'")
+                BRANCH_NAME = sh(script: "echo ${BRANCH_NAME}")
             }
             steps {
                 script {
-                if (GIT_BRANCH) {
+                if (BRANCH_NAME == 'master') {
                 // Fun stuff it will mask out with **** anything similar to NEXUS_CREDS
                 // ${GIT_COMMIT} is the commit hash if you want to use that
                 sh script: 'curl --fail --user "${NEXUS_CREDS}" --upload-file ./linux/s3s2-linux-amd64 ${NEXUS_PATH}/s3s2-linux-amd64', label: "Publishing Linux build"
