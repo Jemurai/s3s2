@@ -18,6 +18,7 @@ var pubkey string
 var privkey string
 var ssmpubkey string
 var ssmprivkey string
+var awsprofile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{

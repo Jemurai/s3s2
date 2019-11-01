@@ -11,7 +11,6 @@ import (
 	utils "github.com/tempuslabs/s3s2/utils"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
@@ -21,11 +20,10 @@ import (
 // The share command should only allow this to get called
 // IFF there is a key or the file has been gpg encrypted
 // for the receiver.
-func UploadFile(folder string, filename string, options options.Options) error {
+func UploadFile(folder string, filename string, opts options.Options) error {
 	log.Debugf("\tUploading file: '%s'", filename)
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(options.Region),
-	}))
+
+    sess := utils.GetAwsSession(opts)
 
 	uploader := s3manager.NewUploader(sess)
 
@@ -35,14 +33,14 @@ func UploadFile(folder string, filename string, options options.Options) error {
 	}
 
 	basename := filepath.Base(f.Name())
-	aws_key := utils.OsAgnostic_HandleAwsKey(options.Org, folder, basename)
+	aws_key := utils.OsAgnostic_HandleAwsKey(opts.Org, folder, basename)
 
-	if options.AwsKey != "" {
+	if opts.AwsKey != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{
-			Bucket:               aws.String(options.Bucket),
+			Bucket:               aws.String(opts.Bucket),
 			Key:                  aws.String(aws_key),
 			ServerSideEncryption: aws.String("aws:kms"),
-			SSEKMSKeyId:          aws.String(options.AwsKey),
+			SSEKMSKeyId:          aws.String(opts.AwsKey),
 			Body:                 f,
 		})
 		if err != nil {
@@ -51,7 +49,7 @@ func UploadFile(folder string, filename string, options options.Options) error {
 		log.Infof("\tFile '%s' uploaded to: '%s'", filename, result.Location)
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(options.Bucket),
+			Bucket: aws.String(opts.Bucket),
 			Key:    aws.String(aws_key),
 			Body:   f,
 		})
@@ -64,12 +62,10 @@ func UploadFile(folder string, filename string, options options.Options) error {
 }
 
 // DownloadFile function to download a file from S3.
-func DownloadFile(directory string, pullfile string, options options.Options) (string, error) {
+func DownloadFile(directory string, pullfile string, opts options.Options) (string, error) {
 	log.Debugf("\tDownloading file (1): %s", pullfile)
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(options.Region),
-	}))
 
+	sess := utils.GetAwsSession(opts)
 	downloader := s3manager.NewDownloader(sess)
 
 	filename := filepath.Clean(directory + "/" + pullfile)
@@ -84,11 +80,11 @@ func DownloadFile(directory string, pullfile string, options options.Options) (s
 	}
 	defer file.Close()
 
-	log.Debugf("\tDownloading file (4): About to pull %s, from bucket %s", pullfile, options.Bucket)
+	log.Debugf("\tDownloading file (4): About to pull %s, from bucket %s", pullfile, opts.Bucket)
 	// TODO:  Add the S3 KMS keys if needed.
 	_, err = downloader.Download(file,
 		&s3.GetObjectInput{
-			Bucket: aws.String(options.Bucket),
+			Bucket: aws.String(opts.Bucket),
 			Key:    aws.String(pullfile),
 		})
 	if err != nil {

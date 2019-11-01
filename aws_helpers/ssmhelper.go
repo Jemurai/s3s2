@@ -4,32 +4,29 @@ package aws_helpers
 import (
 
 	options "github.com/tempuslabs/s3s2/options"
+	utils "github.com/tempuslabs/s3s2/utils"
+    log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ssm"
 )
 
-
-func GetParameterValue(keyname string, options options.Options) string {
+// Fetches value associated with provided keyname from SSM store
+func GetParameterValue(keyname string, opts options.Options) string {
 
     withDecryption := true
 
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config:            aws.Config{Region: aws.String(options.Region)},
-		SharedConfigState: session.SharedConfigEnable,
-	})
-
-	if err != nil {
-		panic(err)
-    }
-
-    ssmsvc := ssm.New(sess, aws.NewConfig().WithRegion(options.Region))
+    sess := utils.GetAwsSession(opts)
+    ssmsvc := ssm.New(sess, aws.NewConfig().WithRegion(opts.Region))
 
 	param, err := ssmsvc.GetParameter(&ssm.GetParameterInput{
 		Name:           &keyname,
 		WithDecryption: &withDecryption,
 	})
+
+    if err != nil {
+		log.Fatal(err)
+	}
 
 	value := *param.Parameter.Value
 
