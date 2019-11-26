@@ -98,7 +98,6 @@ func timing(start time.Time, message string) time.Time {
 func buildShareOptions(cmd *cobra.Command) options.Options {
 	directory := viper.GetString("directory")
 
-	awsprofile := viper.GetString("awsprofile")
 	awsKey := viper.GetString("awskey")
 	bucket := viper.GetString("bucket")
 	region := viper.GetString("region")
@@ -109,10 +108,8 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	pubKey := viper.GetString("receiver-public-key")
 	hash := viper.GetBool("hash")
 
-
 	options := options.Options{
 		Directory: directory,
-		AwsProfile:  awsprofile,
 		AwsKey:    awsKey,
 		Bucket:    bucket,
 		Region:    region,
@@ -152,7 +149,6 @@ func init() {
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 	shareCmd.PersistentFlags().String("receiver-public-key", "", "The receiver's public key.  A local file path.")
 	shareCmd.PersistentFlags().Bool("hash", false, "Should the tool calculate hashes (slow)?")
-	shareCmd.PersistentFlags().String("awsprofile", "default", "AWS profile to use when establishing sessions with AWS's SDK.")
 
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
@@ -160,11 +156,8 @@ func init() {
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
 	viper.BindPFlag("receiver-public-key", shareCmd.PersistentFlags().Lookup("receiver-public-key"))
 	viper.BindPFlag("hash", shareCmd.PersistentFlags().Lookup("hash"))
-	viper.BindPFlag("awsprofile", shareCmd.PersistentFlags().Lookup("awsprofile"))
-
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})
 	log.SetLevel(log.DebugLevel)
-
 }

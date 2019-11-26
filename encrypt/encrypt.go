@@ -50,35 +50,57 @@ func Encrypt(filename string, opts options.Options) {
 	encryptFile(filename, opts)
 }
 
-func getKey(opts options.Options) *armor.Block {
+func getPubKey(opts options.Options) *armor.Block {
     var in io.Reader
     var err error
-
     // if provided SSM Pub Key, then fetch from SSM
     if opts.SSMPubKey != "" {
-        in = strings.NewReader(aws_helpers.GetParameterValue(opts.SSMPubKey, opts))
+		in = strings.NewReader(aws_helpers.GetParameterValue(opts.SSMPubKey, opts))
 
     // if provided original filepath value, then use instead
     } else if opts.PubKey != ""{
-        in, err = os.Open(opts.PubKey)
+		in, err = os.Open(opts.PubKey)
         if err != nil {
             log.Error(err)
         }
     } else {
-        panic("You must provided a public key argument!")
+        panic("You must provide a public key argument!")
     }
 
-    block, err := armor.Decode(in)
+	block, err := armor.Decode(in)
 	if err != nil {
 		log.Error(err)
 	}
-
     return block
+}
+
+func getPrivKey(opts options.Options) *armor.Block {
+    var in io.Reader
+    var err error
+    // if provided SSM Pub Key, then fetch from SSM
+    if opts.SSMPrivKey != "" {
+		in = strings.NewReader(aws_helpers.GetParameterValue(opts.SSMPrivKey, opts))
+
+    // if provided original filepath value, then use instead
+    } else if opts.PrivKey != ""{
+		in, err = os.Open(opts.PrivKey)
+        if err != nil {
+            log.Error(err)
+        }
+    } else {
+        panic("You must provide a public key argument!")
     }
+
+	block, err := armor.Decode(in)
+	if err != nil {
+		log.Error(err)
+	}
+    return block
+}
 
 func decodePrivateKey(opts options.Options) *packet.PrivateKey {
 
-    block := getKey(opts)
+	block := getPrivKey(opts)
 
 	if block.Type != openpgp.PrivateKeyType {
 		log.Error("Invalid private key file")
@@ -99,10 +121,10 @@ func decodePrivateKey(opts options.Options) *packet.PrivateKey {
 
 func decodePublicKey(opts options.Options) *packet.PublicKey {
 
-    block := getKey(opts)
+    block := getPubKey(opts)
 
 	if block.Type != openpgp.PublicKeyType {
-		log.Error("Invalid private key file")
+		log.Error("Invalid public key file")
 	}
 
 	reader := packet.NewReader(block.Body)

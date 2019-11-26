@@ -83,7 +83,7 @@ func decryptFile(file string, opts options.Options) {
 
 	encryptTime := time.Now()
 
-    if opts.PrivKey != "" && strings.HasSuffix(file, ".gpg") {
+    if strings.HasSuffix(file, ".gpg") {
 		log.Debugf("Would be decrypting here... %s", fn)
 		encrypt.Decrypt(fn, opts)
 		fn = strings.TrimSuffix(fn, ".gpg")
