@@ -37,7 +37,6 @@ func OsAgnostic_HandleAwsKey(org string, folder string, fn string) string {
 	return filepath.ToSlash(filepath.Clean(filepath.Join(org, folder, fn)))
 }
 
-
 func getAwsConfig(opts options.Options) aws.Config {
     conf := aws.Config{Region: aws.String(opts.Region),}
     return conf
