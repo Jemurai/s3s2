@@ -1,7 +1,14 @@
 pipeline {
     agent {
+        // pipeline-model-definition (might be the correct plugin?) is not
+        // trying to pull from dockerhub if the image does not exist locally on
+        // the jenkins agent. By default it was falling back to a docker
+        // registry at the same url as the jenkins master, which does not and
+        // will not ever exist. To address, we are explicitly setting the
+        // registryUrl to the dockerhub v2 api.
         docker {
             image 'golang'
+            registryUrl "https://index.docker.io/v2/"
         }
     }
     stages {
