@@ -162,7 +162,7 @@ func init() {
 	decryptCmd.PersistentFlags().String("destination", "", "The destination directory to decrypt and unzip.")
 	decryptCmd.MarkFlagRequired("destination")
 
-	decryptCmd.PersistentFlags().String("awsprofile", "default", "AWS profile to use when establishing sessions with AWS's SDK.")
+	decryptCmd.PersistentFlags().String("awsprofile", "", "AWS profile to use when establishing sessions with AWS's SDK.")
 	decryptCmd.PersistentFlags().String("my-private-key", "", "The receiver's private key.  A local file path.")
 	decryptCmd.PersistentFlags().String("my-public-key", "", "The receiver's public key.  A local file path.")
     decryptCmd.PersistentFlags().String("ssm-private-key", "", "The receiver's private key.  A parameter name in SSM.")
@@ -175,7 +175,6 @@ func init() {
 	viper.BindPFlag("my-public-key", decryptCmd.PersistentFlags().Lookup("my-public-key"))
     viper.BindPFlag("ssm-private-key", decryptCmd.PersistentFlags().Lookup("ssm-private-key"))
 	viper.BindPFlag("ssm-public-key", decryptCmd.PersistentFlags().Lookup("ssm-public-key"))
-
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})
