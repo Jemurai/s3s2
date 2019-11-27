@@ -48,11 +48,8 @@ func GetAwsSession(opts options.Options) *session.Session {
 
     sess, err := session.NewSessionWithOptions(session.Options{
     // Specify profile to load for the session's config
-    Profile: opts.AwsProfile,
     // Provide SDK Config options, such as Region.
     Config: getAwsConfig(opts),
-    // Force enable Shared Config support
-    SharedConfigState: session.SharedConfigEnable,
     })
 
     if err != nil {
