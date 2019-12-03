@@ -7,7 +7,6 @@ import (
 	utils "github.com/tempuslabs/s3s2/utils"
     log "github.com/sirupsen/logrus"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ssm"
 )
 
@@ -17,7 +16,7 @@ func GetParameterValue(keyname string, opts options.Options) string {
     withDecryption := true
 
     sess := utils.GetAwsSession(opts)
-    ssmsvc := ssm.New(sess, aws.NewConfig().WithRegion(opts.Region))
+    ssmsvc := ssm.New(sess)
 
 	param, err := ssmsvc.GetParameter(&ssm.GetParameterInput{
 		Name:           &keyname,

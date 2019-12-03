@@ -45,12 +45,23 @@ func getAwsConfig(opts options.Options) aws.Config {
 // Allows for easily adding new command line arguments to
 // influene the creation of AWS sessions
 func GetAwsSession(opts options.Options) *session.Session {
+    var sess *session.Session
+    var err error
 
-    sess, err := session.NewSessionWithOptions(session.Options{
-    // Specify profile to load for the session's config
-    // Provide SDK Config options, such as Region.
-    Config: getAwsConfig(opts),
-    })
+    if opts.AwsProfile != "" {
+        sess, err = session.NewSessionWithOptions(session.Options{
+        // Specify profile to load for the session's config
+        Profile: opts.AwsProfile,
+        // Provide SDK Config options, such as Region.
+        Config: getAwsConfig(opts),
+        // Force enable Shared Config support
+        SharedConfigState: session.SharedConfigEnable,
+        })
+    } else {
+        sess, err = session.NewSessionWithOptions(session.Options{
+        Config: getAwsConfig(opts),
+        })
+    }
 
     if err != nil {
         log.Warnf("Unable to make AWS session: '%s'", err)
