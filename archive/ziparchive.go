@@ -99,6 +99,7 @@ func UnZipFile(filename string, destination string) string {
 		log.Debugf("this is the files name from zreader " + file.Name)
 		extractedFilePath := filepath.Join(
 			destination,
+			"decrypted",
 			file.Name,
 		)
 		log.Debugf("\tExtracted path: %s", extractedFilePath)
