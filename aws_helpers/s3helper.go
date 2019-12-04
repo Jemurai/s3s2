@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	options "github.com/tempuslabs/s3s2/options"
 	log "github.com/sirupsen/logrus"
@@ -68,7 +69,7 @@ func DownloadFile(directory string, pullfile string, opts options.Options) (stri
 	sess := utils.GetAwsSession(opts)
 	downloader := s3manager.NewDownloader(sess)
 
-	filename := filepath.Clean(directory + "/" + pullfile)
+	filename := filepath.Clean(directory + "/" + strings.Replace(pullfile, "\\", "", -1))
 	dirname := filepath.Dir(filename)
 	log.Debugf("\tDownloading file (2): %s", filename)
 
