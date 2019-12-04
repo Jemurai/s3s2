@@ -69,7 +69,9 @@ func DownloadFile(directory string, pullfile string, opts options.Options) (stri
 	sess := utils.GetAwsSession(opts)
 	downloader := s3manager.NewDownloader(sess)
 
-	filename := filepath.Clean(directory + "/" + strings.Replace(pullfile, "\\", "", -1))
+	fmt_pullfile := strings.Replace(pullfile, "\\", "", -1)
+
+	filename := filepath.Clean(directory + "/" + fmt_pullfile)
 	dirname := filepath.Dir(filename)
 	log.Debugf("\tDownloading file (2): %s", filename)
 
@@ -81,17 +83,17 @@ func DownloadFile(directory string, pullfile string, opts options.Options) (stri
 	}
 	defer file.Close()
 
-	log.Debugf("\tDownloading file (4): About to pull %s, from bucket %s", pullfile, opts.Bucket)
+	log.Debugf("\tDownloading file (4): About to pull %s, from bucket %s", fmt_pullfile, opts.Bucket)
 
 	_, err = downloader.Download(file,
 		&s3.GetObjectInput{
 			Bucket: aws.String(opts.Bucket),
-			Key:    aws.String(pullfile),
+			Key:    aws.String(fmt_pullfile),
 		})
 
 	if err != nil {
-		log.Debugf("\tDownloading file (5): %s", pullfile)
-		log.Errorf("Unable to download item '%q', %v", pullfile, err)
+		log.Debugf("\tDownloading file (5): %s", fmt_pullfile)
+		log.Errorf("Unable to download item '%q', %v", fmt_pullfile, err)
 	}
 	log.Debugf("\tDownloading file (6): %s", file.Name())
 	return file.Name(), nil
