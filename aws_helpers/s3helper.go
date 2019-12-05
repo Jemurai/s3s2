@@ -70,8 +70,9 @@ func DownloadFile(directory string, pullfile string, opts options.Options) (stri
 	downloader := s3manager.NewDownloader(sess)
 
 	fmt_pullfile := strings.Replace(pullfile, "\\", "", -1)
+	fmt_directory := strings.Replace(directory, "\\", "", -1)
 
-	filename := filepath.Clean(directory + "/" + fmt_pullfile)
+	filename := filepath.Clean(fmt_directory + "/" + fmt_pullfile)
 	dirname := filepath.Dir(filename)
 	log.Debugf("\tDownloading file (2): %s", filename)
 
