@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 
@@ -34,24 +35,31 @@ that it will be encrypted.`,
 		start := time.Now()
 		opts := buildShareOptions(cmd)
 		checkShareOptions(opts)
+		
 		fnuuid, _ := uuid.NewV4()
-		folder := opts.Prefix + "_s3s2_" + fnuuid.String()
+		batch_folder := opts.Prefix + "_s3s2_" + fnuuid.String()
 
-		m := manifest.BuildManifest(folder, opts)
+		m := manifest.BuildManifest(batch_folder, opts)
 
-		if err := aws_helpers.UploadFile(folder, opts.Directory+m.Name, opts); err != nil {
+		fmt_manifest_path := filepath.Join(opts.Directory, m.Name)
+
+		if err := aws_helpers.UploadFile(batch_folder, fmt_manifest_path, opts); err != nil {
 			log.Error(err)
 		}
-		utils.CleanupFile(opts.Directory + m.Name)
+
+		utils.CleanupFile(fmt_manifest_path)
 
 		var wg sync.WaitGroup
 		for i := 0; i < len(m.Files); i++ {
+
 			wg.Add(1)
-			fn := m.Files[i].Name
+
+			local_path := filepath.Join(opts.Directory, m.Files[i].Name)
+
 			go func(folder string, fn string, opts options.Options) {
 				defer wg.Done()
 				processFile(folder, fn, opts)
-			}(folder, fn, opts)
+			}(batch_folder, local_path, opts)
 		}
 		wg.Wait()
 		timing(start, "Elapsed time: %f")
@@ -61,15 +69,19 @@ that it will be encrypted.`,
 func processFile(folder string, fn string, opts options.Options) {
 	log.Debugf("Processing '%s'", fn)
 	start := time.Now()
-	fn = archive.ZipFile(opts.Directory+fn, opts)
-	//fn = archive.ZipFile(fn)
+
+	fn = archive.ZipFile(fn, opts)
 	archiveTime := timing(start, "\tArchive time (sec): %f")
 	log.Debugf("\tCompressing file: '%s'", fn)
 
 	encrypt.Encrypt(fn, opts)
+
 	fn = fn + ".gpg"
 
+	log.Infof("%s", fn)
+
 	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
+
 	err := aws_helpers.UploadFile(folder, fn, opts)
 	if err != nil {
 		log.Fatal(err)
@@ -96,7 +108,8 @@ func timing(start time.Time, message string) time.Time {
 // buildContext sets up the ShareContext we're going to use
 // to keep track of our state while we go.
 func buildShareOptions(cmd *cobra.Command) options.Options {
-	directory := viper.GetString("directory")
+
+	directory := filepath.Clean(viper.GetString("directory"))
 
 	awsKey := viper.GetString("awskey")
 	bucket := viper.GetString("bucket")
@@ -105,7 +118,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	org := viper.GetString("org")
 	prefix := viper.GetString("prefix")
 
-	pubKey := viper.GetString("receiver-public-key")
+	pubKey := filepath.Clean(viper.GetString("receiver-public-key"))
 	hash := viper.GetBool("hash")
 
 	options := options.Options{
@@ -114,7 +127,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 		Bucket:    bucket,
 		Region:    region,
 		Org:       org,
-		Prefix:    prefix,
+		Prefix:     prefix,
 		PubKey:    pubKey,
 		Hash:      hash,
 	}

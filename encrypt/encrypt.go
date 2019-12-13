@@ -24,22 +24,6 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
-// Possible references...
-// There are some challenges here.
-//
-// Specifically, we want to stream the data.
-//
-// https://gist.github.com/ayubmalik/a83ee23c7c700cdce2f8c5bf5f2e9f20
-// https://gist.github.com/stuart-warren/93750a142d3de4e8fdd2
-// https://play.golang.org/p/vk58yYArMh
-// https://github.com/jchavannes/go-pgp/blob/master/pgp/encrypt.go
-// https://gist.github.com/eliquious/9e96017f47d9bd43cdf9
-// https://medium.com/@raul_11817/golang-cryptography-rsa-asymmetric-algorithm-e91363a2f7b3
-// https://github.com/jamesruan/sodium
-// https://github.com/keybase/client/blob/master/go/engine/crypto.go
-// https://github.com/keybase/saltpack
-// https://github.com/hashicorp/vault/blob/master/command/pgp_test.go
-
 // Decrypt a file with a provided key.
 func Decrypt(filename string, opts options.Options) {
 	decryptFile(filename, opts)
@@ -53,24 +37,30 @@ func Encrypt(filename string, opts options.Options) {
 func getPubKey(opts options.Options) *armor.Block {
     var in io.Reader
     var err error
+
     // if provided SSM Pub Key, then fetch from SSM
     if opts.SSMPubKey != "" {
 		in = strings.NewReader(aws_helpers.GetParameterValue(opts.SSMPubKey, opts))
 
     // if provided original filepath value, then use instead
-    } else if opts.PubKey != ""{
+    } else if opts.PubKey != "" {
+
 		in, err = os.Open(opts.PubKey)
+
         if err != nil {
             log.Error(err)
         }
+
     } else {
         panic("You must provide a public key argument!")
     }
 
 	block, err := armor.Decode(in)
+
 	if err != nil {
 		log.Error(err)
 	}
+
     return block
 }
 
@@ -82,11 +72,12 @@ func getPrivKey(opts options.Options) *armor.Block {
 		in = strings.NewReader(aws_helpers.GetParameterValue(opts.SSMPrivKey, opts))
 
     // if provided original filepath value, then use instead
-    } else if opts.PrivKey != ""{
+    } else if opts.PrivKey != "" {
 		in, err = os.Open(opts.PrivKey)
         if err != nil {
             log.Error(err)
         }
+
     } else {
         panic("You must provide a public key argument!")
     }
@@ -95,18 +86,19 @@ func getPrivKey(opts options.Options) *armor.Block {
 	if err != nil {
 		log.Error(err)
 	}
+
     return block
 }
 
 func decodePrivateKey(opts options.Options) *packet.PrivateKey {
 
 	block := getPrivKey(opts)
-
 	if block.Type != openpgp.PrivateKeyType {
 		log.Error("Invalid private key file")
 	}
 
 	reader := packet.NewReader(block.Body)
+
 	pkt, err := reader.Next()
 	if err != nil {
 		log.Error(err)
@@ -116,13 +108,13 @@ func decodePrivateKey(opts options.Options) *packet.PrivateKey {
 	if !ok {
 		log.Error("Invalid private key")
 	}
+
 	return key
 }
 
 func decodePublicKey(opts options.Options) *packet.PublicKey {
 
     block := getPubKey(opts)
-
 	if block.Type != openpgp.PublicKeyType {
 		log.Error("Invalid public key file")
 	}
@@ -137,6 +129,7 @@ func decodePublicKey(opts options.Options) *packet.PublicKey {
 	if !ok {
 		log.Error("Invalid public key")
 	}
+
 	return key
 }
 
@@ -144,8 +137,7 @@ func getEncryptionConfig() packet.Config {
 	config := packet.Config{
 		DefaultHash:            crypto.SHA256,
 		DefaultCipher:          packet.CipherAES256,
-		DefaultCompressionAlgo: packet.CompressionNone, // We already zstd'd it.
-		//		DefaultCompressionAlgo: packet.CompressionZLIB,
+		DefaultCompressionAlgo: packet.CompressionNone,
 		CompressionConfig: &packet.CompressionConfig{
 			Level: 9,
 		},
@@ -208,23 +200,23 @@ func encryptFile(file string, opts options.Options) {
     log.Debugf("Encrypting file: '%s'...", file)
 
 	pubKey := decodePublicKey(opts)
-
-	config := getEncryptionConfig()
-	//	privKey := decodePrivateKey(privateKey, options)
-	to := createEntityFromKeys(pubKey, nil) // We shouldn't have the receiver's private key!!!
+	to := createEntityFromKeys(pubKey, nil) // We shouldn't have the receiver's private key!
 
 	ofile, err := os.Create(file + ".gpg")
 	if err != nil {
 		log.Error(err)
 	}
+
 	defer ofile.Close()
 
 	w, err := armor.Encode(ofile, "Message", make(map[string]string))
 	if err != nil {
 		log.Error(err)
 	}
+
 	defer w.Close()
 
+    config := getEncryptionConfig()
 	// Here the signer should be the sender
 	plain, err := openpgp.Encrypt(w, []*openpgp.Entity{to}, nil, &openpgp.FileHints{IsBinary: true}, &config)
 	if err != nil {
@@ -241,6 +233,7 @@ func encryptFile(file string, opts options.Options) {
 	if err != nil {
 		log.Error(err)
 	}
+
 	defer infile.Close()
 
 	n, err := io.Copy(compressed, infile)
@@ -291,11 +284,13 @@ func decryptFile(file string, opts options.Options) {
 	if err != nil {
 		log.Error(err)
 	}
+
 	dfn := strings.TrimSuffix(file, ".gpg")
 	dfile, err := os.Create(dfn)
 	if err != nil {
 		log.Error(err)
 	}
+
 	defer dfile.Close()
 
 	n, err := io.Copy(dfile, compressed)

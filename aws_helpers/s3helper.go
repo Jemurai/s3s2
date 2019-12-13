@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	options "github.com/tempuslabs/s3s2/options"
 	log "github.com/sirupsen/logrus"
@@ -33,8 +32,8 @@ func UploadFile(folder string, filename string, opts options.Options) error {
 		return fmt.Errorf("Failed to open file '%q', %v", filename, err)
 	}
 
-	basename := filepath.Base(f.Name())
-	aws_key := utils.OsAgnostic_HandleAwsKey(opts.Org, folder, basename)
+	basename := f.Name()
+	aws_key := utils.OsAgnostic_HandleAwsKey(opts.Org, folder, basename, opts)
 
 	if opts.AwsKey != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{
@@ -69,32 +68,29 @@ func DownloadFile(directory string, pullfile string, opts options.Options) (stri
 	sess := utils.GetAwsSession(opts)
 	downloader := s3manager.NewDownloader(sess)
 
-	fmt_pullfile := strings.Replace(pullfile, "\\", "", -1)
-	fmt_directory := strings.Replace(directory, "\\", "", -1)
+	log.Debugf("\tDownloading file (2): %s", pullfile)
 
-	filename := filepath.Clean(fmt_directory + "/" + fmt_pullfile)
-	dirname := filepath.Dir(filename)
-	log.Debugf("\tDownloading file (2): %s", filename)
-
+	dirname := filepath.Dir(pullfile)
 	os.MkdirAll(dirname, os.ModePerm)
-	file, err := os.Create(filename)
+
+	file, err := os.Create(pullfile)
 	if err != nil {
-		log.Debugf("\tDownloading file (3): %s", filename)
-		return "", fmt.Errorf("Unable to open file %q, %v", filename, err)
+		log.Debugf("\tDownloading file (3): %s", pullfile)
+		return "", fmt.Errorf("Unable to open file %q, %v", pullfile, err)
 	}
 	defer file.Close()
 
-	log.Debugf("\tDownloading file (4): About to pull %s, from bucket %s", fmt_pullfile, opts.Bucket)
+	log.Debugf("\tDownloading file (4): About to pull %s, from bucket %s", pullfile, opts.Bucket)
 
 	_, err = downloader.Download(file,
 		&s3.GetObjectInput{
 			Bucket: aws.String(opts.Bucket),
-			Key:    aws.String(fmt_pullfile),
+			Key:    aws.String(pullfile),
 		})
 
 	if err != nil {
-		log.Debugf("\tDownloading file (5): %s", fmt_pullfile)
-		log.Errorf("Unable to download item '%q', %v", fmt_pullfile, err)
+		log.Debugf("\tDownloading file (5): %s", pullfile)
+		log.Errorf("Unable to download item '%q', %v", pullfile, err)
 	}
 	log.Debugf("\tDownloading file (6): %s", file.Name())
 	return file.Name(), nil

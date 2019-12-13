@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"path/filepath"
 
 	archive "github.com/tempuslabs/s3s2/archive"
 	"github.com/tempuslabs/s3s2/encrypt"
@@ -49,7 +50,7 @@ var decryptCmd = &cobra.Command{
 				if !strings.HasSuffix(m.Files[i].Name, "manifest.json") {
 					wg.Add(1)
 
-					f := utils.OsAgnostic_HandleAwsKey(org, folder, m.Files[i].Name + ".zip.gpg")
+					f := utils.OsAgnostic_HandleAwsKey(org, folder, m.Files[i].Name + ".zip.gpg", opts)
 
 					go func(f string, opts options.Options) {
 						defer wg.Done()
@@ -58,7 +59,7 @@ var decryptCmd = &cobra.Command{
 				}
 			}
 			wg.Wait()
-			utils.CleanupDirectory(opts.Destination + m.Folder)
+			utils.CleanupDirectory(filepath.Join(opts.Destination, m.Folder))
 
 		} else {
 			decryptFile(opts.File, opts)
