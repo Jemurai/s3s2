@@ -12,6 +12,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+    "golang.org/x/crypto/openpgp/packet"
 
 	archive "github.com/tempuslabs/s3s2/archive"
 	encrypt "github.com/tempuslabs/s3s2/encrypt"
@@ -40,7 +41,8 @@ that it will be encrypted.`,
 
 		sess := utils.GetAwsSession(opts)
 	    uploader := s3manager.NewUploader(sess)
-		
+	    _pubKey := encrypt.GetPubKey(sess, opts)
+
 		fnuuid, _ := uuid.NewV4()
 		batch_folder := opts.Prefix + "_s3s2_" + fnuuid.String()
 
@@ -62,7 +64,7 @@ that it will be encrypted.`,
 
 			go func(folder string, fn string, opts options.Options) {
 				defer wg.Done()
-				processFile(uploader, folder, fn, opts)
+				processFile(uploader, _pubKey, folder, fn, opts)
 			}(batch_folder, local_path, opts)
 		}
 		wg.Wait()
@@ -70,7 +72,7 @@ that it will be encrypted.`,
 	},
 }
 
-func processFile(uploader *s3manager.Uploader, folder string, fn string, opts options.Options) {
+func processFile(uploader *s3manager.Uploader, _pubkey *packet.PublicKey, folder string, fn string, opts options.Options) {
 	log.Debugf("Processing '%s'", fn)
 	start := time.Now()
 
@@ -78,7 +80,7 @@ func processFile(uploader *s3manager.Uploader, folder string, fn string, opts op
 	archiveTime := timing(start, "\tArchive time (sec): %f")
 	log.Debugf("\tCompressing file: '%s'", fn)
 
-	encrypt.Encrypt(fn, opts)
+	encrypt.Encrypt(_pubkey, fn, opts)
 
 	fn = fn + ".gpg"
 

@@ -7,12 +7,15 @@ import (
 	"sync"
 	"time"
 	"path/filepath"
+	"golang.org/x/crypto/openpgp/packet"
+
 
 	archive "github.com/tempuslabs/s3s2/archive"
 	"github.com/tempuslabs/s3s2/encrypt"
 	manifest "github.com/tempuslabs/s3s2/manifest"
 	options "github.com/tempuslabs/s3s2/options"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/aws/session"
 
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
 	utils "github.com/tempuslabs/s3s2/utils"
@@ -37,6 +40,8 @@ var decryptCmd = &cobra.Command{
 
 	    sess := utils.GetAwsSession(opts)
 	    downloader := s3manager.NewDownloader(sess)
+	    _pubKey := encrypt.GetPubKey(sess, opts)
+	    _privKey := encrypt.GetPrivKey(sess, opts)
 
 		if strings.HasSuffix(opts.File, "manifest.json") {
 
@@ -61,7 +66,7 @@ var decryptCmd = &cobra.Command{
 
 					go func(f string, opts options.Options) {
 						defer wg.Done()
-						decryptFile(downloader, f, opts)
+						decryptFile(sess, downloader, _pubKey, _privKey, f, opts)
 					}(f, opts)
 				}
 			}
@@ -69,13 +74,13 @@ var decryptCmd = &cobra.Command{
 			utils.CleanupDirectory(filepath.Join(opts.Destination, m.Folder))
 
 		} else {
-			decryptFile(downloader, opts.File, opts)
+			decryptFile(sess, downloader, _pubKey, _privKey, opts.File, opts)
 		}
 		timing(start, "Elapsed time: %f")
 	},
 }
 
-func decryptFile(downloader *s3manager.Downloader, file string, opts options.Options) {
+func decryptFile(sess *session.Session, downloader *s3manager.Downloader, _pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file string, opts options.Options) {
 	log.Debugf("Processing %s", file)
 	start := time.Now()
 
@@ -93,7 +98,7 @@ func decryptFile(downloader *s3manager.Downloader, file string, opts options.Opt
 
     if strings.HasSuffix(file, ".gpg") {
 		log.Debugf("Would be decrypting here... %s", fn)
-		encrypt.Decrypt(fn, opts)
+		encrypt.Decrypt(sess, _pubkey, _privkey, fn, opts)
 		fn = strings.TrimSuffix(fn, ".gpg")
 		encryptTime = timing(downloadTime, "\tDecrypt time (sec): %f")
 	}
