@@ -12,6 +12,8 @@ import (
 	"github.com/tempuslabs/s3s2/encrypt"
 	manifest "github.com/tempuslabs/s3s2/manifest"
 	options "github.com/tempuslabs/s3s2/options"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
 	utils "github.com/tempuslabs/s3s2/utils"
 
@@ -33,9 +35,14 @@ var decryptCmd = &cobra.Command{
 		opts := buildDecryptOptions()
 		checkDecryptOptions(opts)
 
+	    sess := utils.GetAwsSession(opts)
+	    downloader := s3manager.NewDownloader(sess)
+
 		if strings.HasSuffix(opts.File, "manifest.json") {
+
 			log.Debugf("manifest file: %s, %s", opts.Destination, opts.File)
-			fn, err := aws_helpers.DownloadFile(opts.Destination, opts.File, opts)
+
+			fn, err := aws_helpers.DownloadFile(downloader, opts.Destination, opts.File, opts)
 			if err != nil {
 				log.Error(err)
 			}
@@ -54,7 +61,7 @@ var decryptCmd = &cobra.Command{
 
 					go func(f string, opts options.Options) {
 						defer wg.Done()
-						decryptFile(f, opts)
+						decryptFile(downloader, f, opts)
 					}(f, opts)
 				}
 			}
@@ -62,17 +69,17 @@ var decryptCmd = &cobra.Command{
 			utils.CleanupDirectory(filepath.Join(opts.Destination, m.Folder))
 
 		} else {
-			decryptFile(opts.File, opts)
+			decryptFile(downloader, opts.File, opts)
 		}
 		timing(start, "Elapsed time: %f")
 	},
 }
 
-func decryptFile(file string, opts options.Options) {
+func decryptFile(downloader *s3manager.Downloader, file string, opts options.Options) {
 	log.Debugf("Processing %s", file)
 	start := time.Now()
 
-	fn, err := aws_helpers.DownloadFile(opts.Destination, file, opts)
+	fn, err := aws_helpers.DownloadFile(downloader, opts.Destination, file, opts)
 
 	if err != nil {
 		log.Fatal(err)

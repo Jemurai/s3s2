@@ -17,6 +17,8 @@ import (
 	encrypt "github.com/tempuslabs/s3s2/encrypt"
 	manifest "github.com/tempuslabs/s3s2/manifest"
 	options "github.com/tempuslabs/s3s2/options"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
 	utils "github.com/tempuslabs/s3s2/utils"
 )
@@ -35,15 +37,17 @@ that it will be encrypted.`,
 		start := time.Now()
 		opts := buildShareOptions(cmd)
 		checkShareOptions(opts)
+
+		sess := utils.GetAwsSession(opts)
+	    uploader := s3manager.NewUploader(sess)
 		
 		fnuuid, _ := uuid.NewV4()
 		batch_folder := opts.Prefix + "_s3s2_" + fnuuid.String()
 
 		m := manifest.BuildManifest(batch_folder, opts)
-
 		fmt_manifest_path := filepath.Join(opts.Directory, m.Name)
 
-		if err := aws_helpers.UploadFile(batch_folder, fmt_manifest_path, opts); err != nil {
+		if err := aws_helpers.UploadFile(uploader, batch_folder, fmt_manifest_path, opts); err != nil {
 			log.Error(err)
 		}
 
@@ -58,7 +62,7 @@ that it will be encrypted.`,
 
 			go func(folder string, fn string, opts options.Options) {
 				defer wg.Done()
-				processFile(folder, fn, opts)
+				processFile(uploader, folder, fn, opts)
 			}(batch_folder, local_path, opts)
 		}
 		wg.Wait()
@@ -66,7 +70,7 @@ that it will be encrypted.`,
 	},
 }
 
-func processFile(folder string, fn string, opts options.Options) {
+func processFile(uploader *s3manager.Uploader, folder string, fn string, opts options.Options) {
 	log.Debugf("Processing '%s'", fn)
 	start := time.Now()
 
@@ -82,7 +86,7 @@ func processFile(folder string, fn string, opts options.Options) {
 
 	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
 
-	err := aws_helpers.UploadFile(folder, fn, opts)
+	err := aws_helpers.UploadFile(uploader, folder, fn, opts)
 	if err != nil {
 		log.Fatal(err)
 	}
