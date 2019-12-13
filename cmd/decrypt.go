@@ -6,17 +6,25 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"path/filepath"
+	"golang.org/x/crypto/openpgp/packet"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
+	log "github.com/sirupsen/logrus"
+
+	// aws
+    "github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/aws/session"
+
+    // local
 	archive "github.com/tempuslabs/s3s2/archive"
-	"github.com/tempuslabs/s3s2/encrypt"
+	encrypt "github.com/tempuslabs/s3s2/encrypt"
 	manifest "github.com/tempuslabs/s3s2/manifest"
 	options "github.com/tempuslabs/s3s2/options"
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
 	utils "github.com/tempuslabs/s3s2/utils"
-
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var opts options.Options
@@ -32,9 +40,17 @@ var decryptCmd = &cobra.Command{
 		opts := buildDecryptOptions()
 		checkDecryptOptions(opts)
 
+        // top level clients
+	    sess := utils.GetAwsSession(opts)
+	    downloader := s3manager.NewDownloader(sess)
+	    _pubKey := encrypt.GetPubKey(sess, opts)
+	    _privKey := encrypt.GetPrivKey(sess, opts)
+
 		if strings.HasSuffix(opts.File, "manifest.json") {
-			log.Debugf("manifest file: %s, %s", opts.Destination, opts.File)
-			fn, err := aws_helpers.DownloadFile(opts.Destination, opts.File, opts)
+
+			log.Debugf("Manifest file: %s, %s", opts.Destination, opts.File)
+
+			fn, err := aws_helpers.DownloadFile(downloader, opts.Destination, opts.File, opts)
 			if err != nil {
 				log.Error(err)
 			}
@@ -49,43 +65,43 @@ var decryptCmd = &cobra.Command{
 				if !strings.HasSuffix(m.Files[i].Name, "manifest.json") {
 					wg.Add(1)
 
-					f := utils.OsAgnostic_HandleAwsKey(org, folder, m.Files[i].Name + ".zip.gpg")
+					f := utils.OsAgnostic_HandleAwsKey(org, folder, m.Files[i].Name + ".zip.gpg", opts)
 
 					go func(f string, opts options.Options) {
 						defer wg.Done()
-						decryptFile(f, opts)
+						decryptFile(sess, downloader, _pubKey, _privKey, f, opts)
 					}(f, opts)
 				}
 			}
 			wg.Wait()
-			utils.CleanupDirectory(opts.Destination + m.Folder)
+			utils.CleanupDirectory(filepath.Join(opts.Destination, m.Folder))
 
 		} else {
-			decryptFile(opts.File, opts)
+			decryptFile(sess, downloader, _pubKey, _privKey, opts.File, opts)
 		}
 		timing(start, "Elapsed time: %f")
 	},
 }
 
-func decryptFile(file string, opts options.Options) {
+func decryptFile(sess *session.Session, downloader *s3manager.Downloader, _pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file string, opts options.Options) {
 	log.Debugf("Processing %s", file)
 	start := time.Now()
 
-	fn, err := aws_helpers.DownloadFile(opts.Destination, file, opts)
-
+	fn, err := aws_helpers.DownloadFile(downloader, opts.Destination, file, opts)
 	if err != nil {
 		log.Fatal(err)
 	}
-	stat, _ := os.Stat(fn)
-	log.Debugf("Stat of file: %v", stat.Size())
 
+	stat, _ := os.Stat(fn)
+
+	log.Debugf("Stat of file: %v", stat.Size())
 	downloadTime := timing(start, "\tDownload time (sec): %f")
 
 	encryptTime := time.Now()
 
     if strings.HasSuffix(file, ".gpg") {
 		log.Debugf("Would be decrypting here... %s", fn)
-		encrypt.Decrypt(fn, opts)
+		encrypt.Decrypt(sess, _pubkey, _privkey, fn, opts)
 		fn = strings.TrimSuffix(fn, ".gpg")
 		encryptTime = timing(downloadTime, "\tDecrypt time (sec): %f")
 	}

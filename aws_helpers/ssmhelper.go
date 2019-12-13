@@ -2,23 +2,16 @@
 package aws_helpers
 
 import (
-
-	options "github.com/tempuslabs/s3s2/options"
-	utils "github.com/tempuslabs/s3s2/utils"
     log "github.com/sirupsen/logrus"
-
 	"github.com/aws/aws-sdk-go/service/ssm"
 )
 
 // Fetches value associated with provided keyname from SSM store
-func GetParameterValue(keyname string, opts options.Options) string {
+func GetParameterValue(ssm_service *ssm.SSM, keyname string) string {
 
     withDecryption := true
 
-    sess := utils.GetAwsSession(opts)
-    ssmsvc := ssm.New(sess)
-
-	param, err := ssmsvc.GetParameter(&ssm.GetParameterInput{
+	param, err := ssm_service.GetParameter(&ssm.GetParameterInput{
 		Name:           &keyname,
 		WithDecryption: &withDecryption,
 	})
@@ -27,8 +20,6 @@ func GetParameterValue(keyname string, opts options.Options) string {
 		log.Fatal(err)
 	}
 
-	value := *param.Parameter.Value
-
-    return value
+    return *param.Parameter.Value
 }
 

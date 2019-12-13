@@ -15,6 +15,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/tempuslabs/s3s2/options"
+	utils "github.com/tempuslabs/s3s2/utils"
+
 )
 
 // FileDescription is meta info about a file we will want to
@@ -56,22 +58,29 @@ func ReadManifest(file string) Manifest {
 // BuildManifest builds a manifest from a directory.
 // It reads the contents of the directory and captures the file names,
 // owners, dates and user into a manifest.json file.
-func BuildManifest(folder string, options options.Options) Manifest {
+func BuildManifest(batch_folder string, options options.Options) Manifest {
+
     log.Info("Building manifest...")
+
+    // traverse files in given directory
 	var files []FileDescription
 	err := filepath.Walk(options.Directory,
 		func(path string, info os.FileInfo, err error) error {
+
 			if err != nil {
 				return err
 			}
+
 			if !info.IsDir() && !strings.HasSuffix(path, "manifest.json") {
 				sha256hash := hash(path, options)
-				log.Debugf("Registering file '%s' to manifest...", path)
-				files = append(files, FileDescription{strings.Replace(path, options.Directory, "", -1), info.Size(), info.ModTime(), sha256hash})
+				fmt_path := utils.GetRelativePath(path, options)
+				log.Debugf("Registering file '%s' to manifest as name '%s'...", path, fmt_path)
+				files = append(files, FileDescription{fmt_path, info.Size(), info.ModTime(), sha256hash})
 			}
 
 			return nil
 		})
+
 	if err != nil {
 		log.Error(err)
 	}
@@ -79,13 +88,13 @@ func BuildManifest(folder string, options options.Options) Manifest {
 	user, err := user.Current()
 	sudoUser := os.Getenv("SUDO_USER") // In case they are sudo'ing, we can know the acting user.
 	manifest := Manifest{
-		Name:         filepath.Clean("/s3s2_manifest.json"),
+		Name:         filepath.Clean("s3s2_manifest.json"),
 		Timestamp:    time.Now(),
 		Organization: options.Org,
 		Username:     user.Name,
 		User:         user.Username,
 		SudoUser:     sudoUser,
-		Folder:       folder,
+		Folder:       batch_folder,
 		Files:        files,
 	}
 
@@ -95,25 +104,33 @@ func BuildManifest(folder string, options options.Options) Manifest {
 
 // CleanupFile just deletes a file.
 func CleanupFile(fn string) {
+
 	var err = os.Remove(fn)
+
 	if err != nil {
 		log.Warnf("\tIssue deleting file: '%s'", fn)
 	} else {
 		log.Debugf("\tCleaned up: '%s'", fn)
 	}
+
 }
 
 func hash(file string, options options.Options) string {
 	start := time.Now()
+
 	var hash string
 	if options.Hash == true {
+
 		hasher := sha256.New()
 		s, err := ioutil.ReadFile(file)
 		hasher.Write(s)
+
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		hash = hex.EncodeToString(hasher.Sum(nil))
+
 	} else {
 		// Don't actually hash the file.
 		hash = "fake-hash"
@@ -121,14 +138,19 @@ func hash(file string, options options.Options) string {
 
 	current := time.Now()
 	elapsed := current.Sub(start)
+
 	log.Debugf("\tTime to hash %s : %v", file, elapsed)
+
 	return hash
 }
 
 func writeManifest(manifest Manifest, directory string) error {
 	file, _ := json.MarshalIndent(manifest, "", " ")
-	filename := directory + "/s3s2_manifest.json"
-	log.Debug(filename)
+	filename := filepath.Join(directory, "s3s2_manifest.json")
+
+	log.Debugf("Creating local manifest '%s'", filename)
+
 	ioutil.WriteFile(filename, file, 0644)
+
 	return nil
 }
