@@ -108,8 +108,6 @@ func decryptFile(sess *session.Session, downloader *s3manager.Downloader, _pubke
 
 	log.Debugf("\tDecompressing file: %s", fn)
 	fn = archive.UnZipFile(fn, opts.Destination)
-	// utils.CleanupFile(options.Directory)
-	// utils.CleanupFile(fn + ".gpg")
 
 	timing(encryptTime, "\tDecompress time (sec): %f")
 	timing(start, "Total time: %f")

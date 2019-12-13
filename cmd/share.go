@@ -87,8 +87,6 @@ func processFile(uploader *s3manager.Uploader, _pubkey *packet.PublicKey, folder
 
 	fn = fn + ".gpg"
 
-	log.Infof("%s", fn)
-
 	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
 
 	err := aws_helpers.UploadFile(uploader, folder, fn, opts)

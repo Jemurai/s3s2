@@ -11,12 +11,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// ZipFile archives the provided list of files into a Zip file.
-// This is functional but not currently used in S3S2 in favor of
-// the Zst archive format which is faster and better compression.
+// ZipFile zips the provided file.
 func ZipFile(filename string, options options.Options) string {
 	zfilename := filename + ".zip"
+
 	log.Debugf("The file name is " + zfilename)
+
 	newZipFile, err := os.Create(zfilename)
 	if err != nil {
 		log.Error(err)
