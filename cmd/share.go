@@ -7,19 +7,21 @@ import (
 	"time"
 	"path/filepath"
 
-	log "github.com/sirupsen/logrus"
-
-	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
     "golang.org/x/crypto/openpgp/packet"
 
+    log "github.com/sirupsen/logrus"
+	uuid "github.com/satori/go.uuid"
+
+    // aws
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+
+    // local
 	archive "github.com/tempuslabs/s3s2/archive"
 	encrypt "github.com/tempuslabs/s3s2/encrypt"
 	manifest "github.com/tempuslabs/s3s2/manifest"
 	options "github.com/tempuslabs/s3s2/options"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
 	utils "github.com/tempuslabs/s3s2/utils"
 )
@@ -39,6 +41,7 @@ that it will be encrypted.`,
 		opts := buildShareOptions(cmd)
 		checkShareOptions(opts)
 
+        // top level clients
 		sess := utils.GetAwsSession(opts)
 	    uploader := s3manager.NewUploader(sess)
 	    _pubKey := encrypt.GetPubKey(sess, opts)

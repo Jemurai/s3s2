@@ -6,10 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
-	options "github.com/tempuslabs/s3s2/options"
 	log "github.com/sirupsen/logrus"
+
+	// local
+	options "github.com/tempuslabs/s3s2/options"
 	utils "github.com/tempuslabs/s3s2/utils"
 
+     // aws
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"

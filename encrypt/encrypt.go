@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/aws/aws-sdk-go/aws/session"
 	log "github.com/sirupsen/logrus"
 	options "github.com/tempuslabs/s3s2/options"
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
-	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/aws/aws-sdk-go/aws/session"
 
 
 	// For the signature algorithm.

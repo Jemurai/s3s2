@@ -3,7 +3,6 @@ package aws_helpers
 
 import (
     log "github.com/sirupsen/logrus"
-
 	"github.com/aws/aws-sdk-go/service/ssm"
 )
 
@@ -21,8 +20,6 @@ func GetParameterValue(ssm_service *ssm.SSM, keyname string) string {
 		log.Fatal(err)
 	}
 
-	value := *param.Parameter.Value
-
-    return value
+    return *param.Parameter.Value
 }
 

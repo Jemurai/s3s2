@@ -9,20 +9,22 @@ import (
 	"path/filepath"
 	"golang.org/x/crypto/openpgp/packet"
 
-
-	archive "github.com/tempuslabs/s3s2/archive"
-	"github.com/tempuslabs/s3s2/encrypt"
-	manifest "github.com/tempuslabs/s3s2/manifest"
-	options "github.com/tempuslabs/s3s2/options"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/aws/aws-sdk-go/aws/session"
-
-	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
-	utils "github.com/tempuslabs/s3s2/utils"
-
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	log "github.com/sirupsen/logrus"
+
+	// aws
+    "github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/aws/session"
+
+    // local
+	archive "github.com/tempuslabs/s3s2/archive"
+	encrypt "github.com/tempuslabs/s3s2/encrypt"
+	manifest "github.com/tempuslabs/s3s2/manifest"
+	options "github.com/tempuslabs/s3s2/options"
+	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
+	utils "github.com/tempuslabs/s3s2/utils"
 )
 
 var opts options.Options
@@ -38,6 +40,7 @@ var decryptCmd = &cobra.Command{
 		opts := buildDecryptOptions()
 		checkDecryptOptions(opts)
 
+        // top level clients
 	    sess := utils.GetAwsSession(opts)
 	    downloader := s3manager.NewDownloader(sess)
 	    _pubKey := encrypt.GetPubKey(sess, opts)
@@ -45,7 +48,7 @@ var decryptCmd = &cobra.Command{
 
 		if strings.HasSuffix(opts.File, "manifest.json") {
 
-			log.Debugf("manifest file: %s, %s", opts.Destination, opts.File)
+			log.Debugf("Manifest file: %s, %s", opts.Destination, opts.File)
 
 			fn, err := aws_helpers.DownloadFile(downloader, opts.Destination, opts.File, opts)
 			if err != nil {
@@ -85,13 +88,13 @@ func decryptFile(sess *session.Session, downloader *s3manager.Downloader, _pubke
 	start := time.Now()
 
 	fn, err := aws_helpers.DownloadFile(downloader, opts.Destination, file, opts)
-
 	if err != nil {
 		log.Fatal(err)
 	}
-	stat, _ := os.Stat(fn)
-	log.Debugf("Stat of file: %v", stat.Size())
 
+	stat, _ := os.Stat(fn)
+
+	log.Debugf("Stat of file: %v", stat.Size())
 	downloadTime := timing(start, "\tDownload time (sec): %f")
 
 	encryptTime := time.Now()
