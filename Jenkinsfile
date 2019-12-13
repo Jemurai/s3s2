@@ -32,7 +32,6 @@ pipeline {
             steps {
                 // Fun stuff it will mask out with **** anything similar to NEXUS_CREDS
                 // ${GIT_COMMIT} is the commit hash if you want to use that
-                sh script: "${S3S2_VERSION}", label: 'Get env vars'
                 sh script: 'curl --fail --user "${NEXUS_CREDS}" --upload-file ./linux/s3s2-linux-amd64 ${NEXUS_PATH}/s3s2-linux-amd64-{S3S2_VERSION}', label: "Publishing Linux build"
                 sh script: 'curl --fail --user "${NEXUS_CREDS}" --upload-file ./darwin/s3s2-darwin-amd64 ${NEXUS_PATH}/s3s2-darwin-amd64-{S3S2_VERSION}', label: "Publishing Mac build"
                 sh script: 'curl --fail --user "${NEXUS_CREDS}" --upload-file ./windows/s3s2-windows-amd64.exe ${NEXUS_PATH}/s3s2-windows-amd64-{S3S2_VERSION}.exe', label: "Publishing Windows build"
