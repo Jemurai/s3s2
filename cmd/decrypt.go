@@ -66,7 +66,7 @@ var decryptCmd = &cobra.Command{
 					wg.Add(1)
 
                     // files uploaded from windows appear as '//filename.txt'
-					cleaned_fn := strings.Replace(m.Files[i].Name, "\\", "", -1)
+                    cleaned_fn := filepath.Clean(m.Files[i].Name)
 
 					f := utils.OsAgnostic_HandleAwsKey(org, folder, cleaned_fn + ".zip.gpg", opts)
 
