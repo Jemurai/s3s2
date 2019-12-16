@@ -65,7 +65,10 @@ var decryptCmd = &cobra.Command{
 				if !strings.HasSuffix(m.Files[i].Name, "manifest.json") {
 					wg.Add(1)
 
-					f := utils.OsAgnostic_HandleAwsKey(org, folder, m.Files[i].Name + ".zip.gpg", opts)
+                    // files uploaded from windows appear as '//filename.txt'
+					cleaned_fn := strings.Replace(m.Files[i].Name, "\\", "", -1)
+
+					f := utils.OsAgnostic_HandleAwsKey(org, folder, cleaned_fn + ".zip.gpg", opts)
 
 					go func(f string, opts options.Options) {
 						defer wg.Done()
