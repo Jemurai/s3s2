@@ -37,7 +37,7 @@ func GetRelativePath(path string, opts options.Options) string {
         log.Warnf("Unable to get relative path for : '%s'", path)
     }
 
-    return filepath.Clean(rel)
+    return filepath.ToSlash(filepath.Clean(rel))
 
 }
 
