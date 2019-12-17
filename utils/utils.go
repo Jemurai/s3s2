@@ -31,13 +31,17 @@ func CleanupDirectory(fn string) {
 	}
 }
 
+func ToSlashClean(s string) string {
+    return filepath.ToSlash(filepath.Clean(s))
+}
+
 func GetRelativePath(path string, opts options.Options) string {
     rel, err := filepath.Rel(opts.Directory, path)
     if err != nil {
         log.Warnf("Unable to get relative path for : '%s'", path)
     }
 
-    return filepath.ToSlash(filepath.Clean(rel))
+    return ToSlashClean(rel)
 
 }
 
@@ -45,7 +49,7 @@ func GetRelativePath(path string, opts options.Options) string {
 // is used to make aws-compatible object keys
 func OsAgnostic_HandleAwsKey(org string, folder string, fn string, opts options.Options) string {
     rel_path := GetRelativePath(fn, opts)
-	return filepath.ToSlash(filepath.Clean(filepath.Join(org, folder, rel_path)))
+	return ToSlashClean(filepath.Join(org, folder, rel_path))
 }
 
 func getAwsConfig(opts options.Options) aws.Config {
