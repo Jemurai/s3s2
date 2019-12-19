@@ -81,7 +81,7 @@ func DownloadFile(downloader *s3manager.Downloader, string, pullfile string, opt
 	_, err = downloader.Download(file,
 		&s3.GetObjectInput{
 			Bucket: aws.String(opts.Bucket),
-			Key:    aws.String(pullfile),
+			Key:    aws.String(filepath.ToSlash(filepath.Clean(pullfile))),
 		})
 
 	if err != nil {
