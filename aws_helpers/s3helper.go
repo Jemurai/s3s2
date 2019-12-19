@@ -66,27 +66,29 @@ func UploadFile(uploader *s3manager.Uploader, folder string, filename string, op
 func DownloadFile(downloader *s3manager.Downloader, string, pullfile string, opts options.Options) (string, error) {
 	log.Debugf("\tDownloading file (1): %s", pullfile)
 
-	dirname := filepath.Dir(pullfile)
+    filename := filepath.ToSlash(filepath.Clean(pullfile))
+	dirname := filepath.Dir(filename)
+
 	os.MkdirAll(dirname, os.ModePerm)
 
-	file, err := os.Create(pullfile)
+	file, err := os.Create(filename)
 	if err != nil {
-		log.Debugf("\tDownloading file (2): %s", pullfile)
-		return "", fmt.Errorf("Unable to open file %q, %v", pullfile, err)
+		log.Debugf("\tDownloading file (2): %s", filename)
+		return "", fmt.Errorf("Unable to open file %q, %v", filename, err)
 	}
 	defer file.Close()
 
-	log.Debugf("\tDownloading file (3): About to pull %s, from bucket %s", pullfile, opts.Bucket)
+	log.Debugf("\tDownloading file (3): About to pull %s, from bucket %s", filename, opts.Bucket)
 
 	_, err = downloader.Download(file,
 		&s3.GetObjectInput{
 			Bucket: aws.String(opts.Bucket),
-			Key:    aws.String(filepath.ToSlash(filepath.Clean(pullfile))),
+			Key:    aws.String(filename),
 		})
 
 	if err != nil {
-		log.Debugf("\tDownloading file (4): %s", pullfile)
-		log.Errorf("Unable to download item '%q', %v", pullfile, err)
+		log.Debugf("\tDownloading file (4): %s", filename)
+		log.Errorf("Unable to download item '%q', %v", filename, err)
 	}
 	log.Debugf("\tDownloading file (5): %s", file.Name())
 	return file.Name(), nil
