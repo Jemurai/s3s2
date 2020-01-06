@@ -82,12 +82,16 @@ func UnZipFile(filename string, destination string) string {
 			log.Fatal(err)
 		}
 		defer zippedFile.Close()
+
+		// this value can differ from the input 'filename' argument, dir\\filename vs dir/filename
 		log.Debugf("this is the files name from zreader " + file.Name)
+
 		extractedFilePath := filepath.Join(
 			destination,
 			"decrypted",
-			file.Name,
+			returnFn,
 		)
+
 		log.Debugf("\tExtracted path: %s", extractedFilePath)
 		if file.FileInfo().IsDir() {
 			log.Println("Directory Created:", extractedFilePath)
