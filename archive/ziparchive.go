@@ -89,7 +89,7 @@ func UnZipFile(filename string, destination string) string {
 		extractedFilePath := filepath.Join(
 			destination,
 			"decrypted",
-			returnFn,
+			filepath.ToSlash(filepath.Clean(file.Name)),
 		)
 
 		log.Debugf("\tExtracted path: %s", extractedFilePath)
