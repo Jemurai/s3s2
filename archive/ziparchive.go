@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+	utils "github.com/tempuslabs/s3s2/utils"
 )
 
 // ZipFile zips the provided file.
@@ -83,13 +84,12 @@ func UnZipFile(filename string, destination string) string {
 		}
 		defer zippedFile.Close()
 
-		// this value can differ from the input 'filename' argument, dir\\filename vs dir/filename
-		log.Debugf("this is the files name from zreader " + file.Name)
+		cleaned_name := utils.ToSlashClean(file.Name)
 
 		extractedFilePath := filepath.Join(
 			destination,
 			"decrypted",
-			filepath.ToSlash(filepath.Clean(file.Name)),
+			cleaned_name,
 		)
 
 		log.Debugf("\tExtracted path: %s", extractedFilePath)
@@ -97,7 +97,7 @@ func UnZipFile(filename string, destination string) string {
 			log.Println("Directory Created:", extractedFilePath)
 			os.MkdirAll(extractedFilePath, file.Mode())
 		} else {
-			log.Println("\tFile extracted:", file.Name)
+			log.Println("\tFile extracted:", cleaned_name)
 
 			extractDir := filepath.Dir(extractedFilePath)
 			os.MkdirAll(extractDir, os.ModePerm)
@@ -114,7 +114,7 @@ func UnZipFile(filename string, destination string) string {
 			if err != nil {
 				log.Fatal(err)
 			}
-			returnFn = outputFile.Name()
+			returnFn = utils.ToSlashClean(cleaned_name)
 			outputFile.Close()
 		}
 	}

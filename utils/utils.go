@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	session "github.com/aws/aws-sdk-go/aws/session"
@@ -32,7 +33,7 @@ func CleanupDirectory(fn string) {
 }
 
 func ToSlashClean(s string) string {
-    return filepath.ToSlash(filepath.Clean(s))
+    return strings.Replace(filepath.ToSlash(filepath.Clean(s)), "\\", "/", -1)
 }
 
 func GetRelativePath(path string, opts options.Options) string {

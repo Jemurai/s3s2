@@ -66,7 +66,7 @@ func UploadFile(uploader *s3manager.Uploader, folder string, filename string, op
 func DownloadFile(downloader *s3manager.Downloader, string, pullfile string, opts options.Options) (string, error) {
 	log.Debugf("\tDownloading file (1): %s", pullfile)
 
-    filename := filepath.ToSlash(filepath.Clean(pullfile))
+    filename := pullfile
 	dirname := filepath.Dir(filename)
 
 	os.MkdirAll(dirname, os.ModePerm)
