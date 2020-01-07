@@ -32,9 +32,16 @@ func CleanupDirectory(fn string) {
 	}
 }
 
+// Force to OS filepath seperator and clean filepaths. * Note * does nothing to filepaths with leading slashes
 func ToSlashClean(s string) string {
-    return strings.Replace(filepath.ToSlash(filepath.Clean(s)), "\\", "/", -1)
+    return filepath.ToSlash(filepath.Clean(s))
 }
+
+// Logic to force paths with forward slashes to backslashes. Main solution for Linux handling files uploaded via Windows
+func ForceBackSlash(s string) string {
+    return strings.Replace(ToSlashClean(s), "\\", "/", -1)
+}
+
 
 func GetRelativePath(path string, opts options.Options) string {
     rel, err := filepath.Rel(opts.Directory, path)

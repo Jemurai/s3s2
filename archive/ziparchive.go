@@ -84,7 +84,7 @@ func UnZipFile(filename string, destination string) string {
 		}
 		defer zippedFile.Close()
 
-		cleaned_name := utils.ToSlashClean(file.Name)
+		cleaned_name := utils.ForceBackSlash(file.Name)
 
 		extractedFilePath := filepath.Join(
 			destination,
@@ -114,7 +114,7 @@ func UnZipFile(filename string, destination string) string {
 			if err != nil {
 				log.Fatal(err)
 			}
-			returnFn = utils.ToSlashClean(cleaned_name)
+			returnFn = utils.ForceBackSlash(cleaned_name)
 			outputFile.Close()
 		}
 	}
