@@ -71,7 +71,7 @@ func DownloadFile(downloader *s3manager.Downloader, string, pullfile string, opt
 
 	os.MkdirAll(dirname, os.ModePerm)
 
-	file, err := os.Create(filename)
+	file, err := os.Create(utils.ForceBackSlash(filename))
 	if err != nil {
 		log.Debugf("\tDownloading file (2): %s", filename)
 		return "", fmt.Errorf("Unable to open file %q, %v", filename, err)

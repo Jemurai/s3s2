@@ -47,10 +47,10 @@ func GetRelativePath(path string, opts options.Options) string {
     rel, err := filepath.Rel(opts.Directory, path)
     if err != nil {
         log.Warnf("Unable to get relative path for : '%s'", path)
+        return path
+    } else {
+        return ToSlashClean(rel)
     }
-
-    return ToSlashClean(rel)
-
 }
 
 // Builds filepath using blackslashes, regardless of operating system

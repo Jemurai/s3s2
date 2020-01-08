@@ -67,6 +67,7 @@ var decryptCmd = &cobra.Command{
 
                     // files uploaded from windows appear as '\\nested_dir\\filename.txt'
                     cleaned_fn := utils.ForceBackSlash(m.Files[i].Name)
+                    log.Debugf("Cleaned filename: %s", cleaned_fn)
 
 					f := utils.OsAgnostic_HandleAwsKey(org, folder, cleaned_fn + ".zip.gpg", opts)
 
