@@ -199,7 +199,6 @@ func encryptFile(pubKey *packet.PublicKey, file string, opts options.Options) {
 	if err != nil {
 		log.Error(err)
 	}
-
 	defer ofile.Close()
 
 	w, err := armor.Encode(ofile, "Message", make(map[string]string))

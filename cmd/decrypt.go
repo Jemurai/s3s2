@@ -54,6 +54,7 @@ var decryptCmd = &cobra.Command{
 			folder := m.Folder
 
             // Iterates over the files inside the manifest, infers their full path, downloads, then decrypts
+            sem := make(chan struct{}, 12)
 			var wg sync.WaitGroup
 			for i := 0; i < len(m.Files); i++ {
 				if !strings.HasSuffix(m.Files[i].Name, "manifest.json") {
@@ -66,6 +67,8 @@ var decryptCmd = &cobra.Command{
 					f := utils.OsAgnostic_HandleAwsKey(org, folder, cleaned_fn + ".zip.gpg", opts)
 
 					go func(f string, opts options.Options) {
+					    sem <- struct{}{}
+			            defer func() { <-sem }()
 						defer wg.Done()
 						decryptFile(_pubKey, _privKey, f, opts)
 					}(f, opts)

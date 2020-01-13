@@ -51,18 +51,18 @@ that it will be encrypted.`,
 		}
 
 		utils.CleanupFile(fmt_manifest_path)
-
+        sem := make(chan struct{}, 12)
 		var wg sync.WaitGroup
 		for i := 0; i < len(m.Files); i++ {
 
-			wg.Add(1)
-
 			local_path := filepath.Join(opts.Directory, m.Files[i].Name)
-
-			go func(folder string, fn string, opts options.Options) {
+            wg.Add(1)
+			go func(folder string, fn string, opts options.Options, wg *sync.WaitGroup) {
+			    sem <- struct{}{}
+			    defer func() { <-sem }()
 				defer wg.Done()
 				processFile(_pubKey, folder, fn, opts)
-			}(batch_folder, local_path, opts)
+			}(batch_folder, local_path, opts, &wg)
 		}
 		wg.Wait()
 		timing(start, "Elapsed time: %f")
