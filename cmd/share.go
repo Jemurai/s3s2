@@ -46,11 +46,6 @@ that it will be encrypted.`,
 		m := manifest.BuildManifest(batch_folder, opts)
 		fmt_manifest_path := filepath.Join(opts.Directory, m.Name)
 
-		if err := aws_helpers.UploadFile(batch_folder, fmt_manifest_path, opts); err != nil {
-			log.Error(err)
-		}
-
-		utils.CleanupFile(fmt_manifest_path)
         sem := make(chan struct{}, 12)
 		var wg sync.WaitGroup
 		for i := 0; i < len(m.Files); i++ {
@@ -64,7 +59,15 @@ that it will be encrypted.`,
 				processFile(_pubKey, folder, fn, opts)
 			}(batch_folder, local_path, opts, &wg)
 		}
+
 		wg.Wait()
+
+		if err := aws_helpers.UploadFile(batch_folder, fmt_manifest_path, opts); err != nil {
+			log.Error(err)
+		} else {
+		    utils.CleanupFile(fmt_manifest_path)
+		    }
+
 		timing(start, "Elapsed time: %f")
 
 	},
