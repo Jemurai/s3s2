@@ -23,8 +23,11 @@ import (
 // The share command should only allow this to get called
 // IFF there is a key or the file has been gpg encrypted
 // for the receiver.
-func UploadFile(uploader *s3manager.Uploader, folder string, filename string, opts options.Options) error {
+func UploadFile(folder string, filename string, opts options.Options) error {
 	log.Debugf("\tUploading file: '%s'", filename)
+
+	sess := utils.GetAwsSession(opts)
+	uploader := s3manager.NewUploader(sess)
 
 	f, err := os.Open(filename)
 	if err != nil {
@@ -63,8 +66,11 @@ func UploadFile(uploader *s3manager.Uploader, folder string, filename string, op
 }
 
 // DownloadFile function to download a file from S3.
-func DownloadFile(downloader *s3manager.Downloader, string, pullfile string, opts options.Options) (string, error) {
+func DownloadFile(string, pullfile string, opts options.Options) (string, error) {
 	log.Debugf("\tDownloading file (1): %s", pullfile)
+
+    sess := utils.GetAwsSession(opts)
+	downloader := s3manager.NewDownloader(sess)
 
     filename := pullfile
 	dirname := filepath.Dir(filename)

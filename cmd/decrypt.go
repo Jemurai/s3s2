@@ -14,10 +14,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	// aws
-    "github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/aws/aws-sdk-go/aws/session"
-
     // local
 	archive "github.com/tempuslabs/s3s2/archive"
 	encrypt "github.com/tempuslabs/s3s2/encrypt"
@@ -41,16 +37,14 @@ var decryptCmd = &cobra.Command{
 		checkDecryptOptions(opts)
 
         // top level clients
-	    sess := utils.GetAwsSession(opts)
-	    downloader := s3manager.NewDownloader(sess)
-	    _pubKey := encrypt.GetPubKey(sess, opts)
-	    _privKey := encrypt.GetPrivKey(sess, opts)
+	    _pubKey := encrypt.GetPubKey(opts)
+	    _privKey := encrypt.GetPrivKey(opts)
 
 		if strings.HasSuffix(opts.File, "manifest.json") {
 
 			log.Debugf("Manifest file: %s, %s", opts.Destination, opts.File)
 
-			fn, err := aws_helpers.DownloadFile(downloader, opts.Destination, opts.File, opts)
+			fn, err := aws_helpers.DownloadFile(opts.Destination, opts.File, opts)
 			if err != nil {
 				log.Error(err)
 			}
@@ -73,7 +67,7 @@ var decryptCmd = &cobra.Command{
 
 					go func(f string, opts options.Options) {
 						defer wg.Done()
-						decryptFile(sess, downloader, _pubKey, _privKey, f, opts)
+						decryptFile(_pubKey, _privKey, f, opts)
 					}(f, opts)
 				}
 			}
@@ -81,17 +75,17 @@ var decryptCmd = &cobra.Command{
 			utils.CleanupDirectory(filepath.Join(opts.Destination, m.Folder))
 
 		} else {
-			decryptFile(sess, downloader, _pubKey, _privKey, utils.ForceBackSlash(opts.File), opts)
+			decryptFile(_pubKey, _privKey, utils.ForceBackSlash(opts.File), opts)
 		}
 		timing(start, "Elapsed time: %f")
 	},
 }
 
-func decryptFile(sess *session.Session, downloader *s3manager.Downloader, _pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file string, opts options.Options) {
+func decryptFile(_pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file string, opts options.Options) {
 	log.Debugf("Processing %s", file)
 	start := time.Now()
 
-	fn, err := aws_helpers.DownloadFile(downloader, opts.Destination, file, opts)
+	fn, err := aws_helpers.DownloadFile(opts.Destination, file, opts)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -105,7 +99,7 @@ func decryptFile(sess *session.Session, downloader *s3manager.Downloader, _pubke
 
     if strings.HasSuffix(file, ".gpg") {
 		log.Debugf("Would be decrypting here... %s", fn)
-		encrypt.Decrypt(sess, _pubkey, _privkey, fn, opts)
+		encrypt.Decrypt(_pubkey, _privkey, fn, opts)
 		fn = strings.TrimSuffix(fn, ".gpg")
 		encryptTime = timing(downloadTime, "\tDecrypt time (sec): %f")
 	}

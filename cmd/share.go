@@ -14,9 +14,6 @@ import (
     log "github.com/sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
 
-    // aws
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-
     // local
 	archive "github.com/tempuslabs/s3s2/archive"
 	encrypt "github.com/tempuslabs/s3s2/encrypt"
@@ -41,10 +38,7 @@ that it will be encrypted.`,
 		opts := buildShareOptions(cmd)
 		checkShareOptions(opts)
 
-        // top level clients
-		sess := utils.GetAwsSession(opts)
-	    uploader := s3manager.NewUploader(sess)
-	    _pubKey := encrypt.GetPubKey(sess, opts)
+	    _pubKey := encrypt.GetPubKey(opts)
 
 		fnuuid, _ := uuid.NewV4()
 		batch_folder := opts.Prefix + "_s3s2_" + fnuuid.String()
@@ -52,7 +46,7 @@ that it will be encrypted.`,
 		m := manifest.BuildManifest(batch_folder, opts)
 		fmt_manifest_path := filepath.Join(opts.Directory, m.Name)
 
-		if err := aws_helpers.UploadFile(uploader, batch_folder, fmt_manifest_path, opts); err != nil {
+		if err := aws_helpers.UploadFile(batch_folder, fmt_manifest_path, opts); err != nil {
 			log.Error(err)
 		}
 
@@ -67,15 +61,16 @@ that it will be encrypted.`,
 
 			go func(folder string, fn string, opts options.Options) {
 				defer wg.Done()
-				processFile(uploader, _pubKey, folder, fn, opts)
+				processFile(_pubKey, folder, fn, opts)
 			}(batch_folder, local_path, opts)
 		}
 		wg.Wait()
 		timing(start, "Elapsed time: %f")
+
 	},
 }
 
-func processFile(uploader *s3manager.Uploader, _pubkey *packet.PublicKey, folder string, fn string, opts options.Options) {
+func processFile(_pubkey *packet.PublicKey, folder string, fn string, opts options.Options) {
 	log.Debugf("Processing '%s'", fn)
 	start := time.Now()
 
@@ -89,7 +84,7 @@ func processFile(uploader *s3manager.Uploader, _pubkey *packet.PublicKey, folder
 
 	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
 
-	err := aws_helpers.UploadFile(uploader, folder, fn, opts)
+	err := aws_helpers.UploadFile(folder, fn, opts)
 	if err != nil {
 		log.Fatal(err)
 	}

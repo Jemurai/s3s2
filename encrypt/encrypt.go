@@ -13,11 +13,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/aws/aws-sdk-go/aws/session"
 	log "github.com/sirupsen/logrus"
 	options "github.com/tempuslabs/s3s2/options"
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
-
+	utils "github.com/tempuslabs/s3s2/utils"
 
 	// For the signature algorithm.
 	_ "golang.org/x/crypto/ripemd160"
@@ -28,8 +27,8 @@ import (
 )
 
 // Decrypt a file with a provided key.
-func Decrypt(sess *session.Session, _pubkey *packet.PublicKey, _privkey *packet.PrivateKey, filename string, opts options.Options) {
-	decryptFile(sess, _pubkey, _privkey, filename, opts)
+func Decrypt(_pubkey *packet.PublicKey, _privkey *packet.PrivateKey, filename string, opts options.Options) {
+	decryptFile(_pubkey, _privkey, filename, opts)
 }
 
 // Encrypt a file
@@ -37,9 +36,11 @@ func Encrypt(pubkey *packet.PublicKey, filename string, opts options.Options) {
 	encryptFile(pubkey, filename, opts)
 }
 
-func GetPubKey(sess *session.Session, opts options.Options) *packet.PublicKey {
+func GetPubKey(opts options.Options) *packet.PublicKey {
     var in io.Reader
     var err error
+
+    sess := utils.GetAwsSession(opts)
 
     // if provided SSM Pub Key, then fetch from SSM
     if opts.SSMPubKey != "" {
@@ -80,9 +81,12 @@ func GetPubKey(sess *session.Session, opts options.Options) *packet.PublicKey {
 }
 
 
-func GetPrivKey(sess *session.Session, opts options.Options) *packet.PrivateKey {
+func GetPrivKey(opts options.Options) *packet.PrivateKey {
     var in io.Reader
     var err error
+
+    sess := utils.GetAwsSession(opts)
+
     // if provided SSM Pub Key, then fetch from SSM
     if opts.SSMPrivKey != "" {
         ssm_service := ssm.New(sess)
@@ -235,7 +239,7 @@ func encryptFile(pubKey *packet.PublicKey, file string, opts options.Options) {
 	log.Infof("Encrypted file: '%s'", file)
 }
 
-func decryptFile(sess *session.Session, _pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file string, opts options.Options) {
+func decryptFile(_pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file string, opts options.Options) {
 
 	entity := createEntityFromKeys(_pubkey, _privkey)
 
