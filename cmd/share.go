@@ -66,10 +66,8 @@ that it will be encrypted.`,
 			log.Error(err)
 		} else {
 		    utils.CleanupFile(fmt_manifest_path)
+		    timing(start, "Elapsed time: %f")
 		    }
-
-		timing(start, "Elapsed time: %f")
-
 	},
 }
 
