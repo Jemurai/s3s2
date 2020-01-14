@@ -9,6 +9,9 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	// local
+
+	session "github.com/aws/aws-sdk-go/aws/session"
+
 	options "github.com/tempuslabs/s3s2/options"
 	utils "github.com/tempuslabs/s3s2/utils"
 
@@ -23,10 +26,9 @@ import (
 // The share command should only allow this to get called
 // IFF there is a key or the file has been gpg encrypted
 // for the receiver.
-func UploadFile(folder string, filename string, opts options.Options) error {
+func UploadFile(sess *session.Session, folder string, filename string, opts options.Options) error {
 	log.Debugf("\tUploading file: '%s'", filename)
 
-	sess := utils.GetAwsSession(opts)
 	uploader := s3manager.NewUploader(sess)
 
 	f, err := os.Open(filename)
@@ -66,10 +68,9 @@ func UploadFile(folder string, filename string, opts options.Options) error {
 }
 
 // DownloadFile function to download a file from S3.
-func DownloadFile(string, pullfile string, opts options.Options) (string, error) {
+func DownloadFile(sess *session.Session, string, pullfile string, opts options.Options) (string, error) {
 	log.Debugf("\tDownloading file (1): %s", pullfile)
 
-    sess := utils.GetAwsSession(opts)
 	downloader := s3manager.NewDownloader(sess)
 
     filename := pullfile

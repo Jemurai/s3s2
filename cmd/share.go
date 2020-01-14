@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/viper"
     "golang.org/x/crypto/openpgp/packet"
 
+    session "github.com/aws/aws-sdk-go/aws/session"
+
     log "github.com/sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
 
@@ -38,6 +40,7 @@ that it will be encrypted.`,
 		opts := buildShareOptions(cmd)
 		checkShareOptions(opts)
 
+        sess := utils.GetAwsSession(opts)
 	    _pubKey := encrypt.GetPubKey(opts)
 
 		fnuuid, _ := uuid.NewV4()
@@ -56,13 +59,13 @@ that it will be encrypted.`,
 			    sem <- struct{}{}
 			    defer func() { <-sem }()
 				defer wg.Done()
-				processFile(_pubKey, folder, fn, opts)
+				processFile(sess, _pubKey, folder, fn, opts)
 			}(batch_folder, local_path, opts, &wg)
 		}
 
 		wg.Wait()
 
-		if err := aws_helpers.UploadFile(batch_folder, fmt_manifest_path, opts); err != nil {
+		if err := aws_helpers.UploadFile(sess, batch_folder, fmt_manifest_path, opts); err != nil {
 			log.Error(err)
 		} else {
 		    utils.CleanupFile(fmt_manifest_path)
@@ -71,7 +74,7 @@ that it will be encrypted.`,
 	},
 }
 
-func processFile(_pubkey *packet.PublicKey, folder string, fn string, opts options.Options) {
+func processFile(sess *session.Session, _pubkey *packet.PublicKey, folder string, fn string, opts options.Options) {
 	log.Debugf("Processing '%s'", fn)
 	start := time.Now()
 
@@ -85,7 +88,7 @@ func processFile(_pubkey *packet.PublicKey, folder string, fn string, opts optio
 
 	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
 
-	err := aws_helpers.UploadFile(folder, fn, opts)
+	err := aws_helpers.UploadFile(sess, folder, fn, opts)
 	if err != nil {
 		log.Fatal(err)
 	}

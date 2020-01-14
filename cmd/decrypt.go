@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	session "github.com/aws/aws-sdk-go/aws/session"
+
 	log "github.com/sirupsen/logrus"
 
     // local
@@ -37,6 +39,7 @@ var decryptCmd = &cobra.Command{
 		checkDecryptOptions(opts)
 
         // top level clients
+        sess := utils.GetAwsSession(opts)
 	    _pubKey := encrypt.GetPubKey(opts)
 	    _privKey := encrypt.GetPrivKey(opts)
 
@@ -44,7 +47,7 @@ var decryptCmd = &cobra.Command{
 
 			log.Debugf("Manifest file: %s, %s", opts.Destination, opts.File)
 
-			fn, err := aws_helpers.DownloadFile(opts.Destination, opts.File, opts)
+			fn, err := aws_helpers.DownloadFile(sess, opts.Destination, opts.File, opts)
 			if err != nil {
 				log.Error(err)
 			}
@@ -70,7 +73,7 @@ var decryptCmd = &cobra.Command{
 					    sem <- struct{}{}
 			            defer func() { <-sem }()
 						defer wg.Done()
-						decryptFile(_pubKey, _privKey, f, opts)
+						decryptFile(sess, _pubKey, _privKey, f, opts)
 					}(f, opts)
 				}
 			}
@@ -78,17 +81,17 @@ var decryptCmd = &cobra.Command{
 			utils.CleanupDirectory(filepath.Join(opts.Destination, m.Folder))
 
 		} else {
-			decryptFile(_pubKey, _privKey, utils.ForceBackSlash(opts.File), opts)
+			decryptFile(sess, _pubKey, _privKey, utils.ForceBackSlash(opts.File), opts)
 		}
 		timing(start, "Elapsed time: %f")
 	},
 }
 
-func decryptFile(_pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file string, opts options.Options) {
+func decryptFile(sess *session.Session, _pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file string, opts options.Options) {
 	log.Debugf("Processing %s", file)
 	start := time.Now()
 
-	fn, err := aws_helpers.DownloadFile(opts.Destination, file, opts)
+	fn, err := aws_helpers.DownloadFile(sess, opts.Destination, file, opts)
 	if err != nil {
 		log.Fatal(err)
 	}

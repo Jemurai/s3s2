@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	session "github.com/aws/aws-sdk-go/aws/session"
@@ -84,6 +85,7 @@ func GetAwsSession(opts options.Options) *session.Session {
     } else {
         sess, err = session.NewSessionWithOptions(session.Options{
         Config: getAwsConfig(opts),
+        AssumeRoleDuration: 12 * time.Hour,
         })
     }
 
