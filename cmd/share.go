@@ -73,6 +73,7 @@ that it will be encrypted.`,
 		        log.Info("Archiving directory...")
 		        utils.ArchiveDirectory(opts)
 		        utils.CleanupDirectory(opts.Directory)
+		        os.MkdirAll(opts.Directory, os.ModePerm)
 		    }
 		    timing(start, "Elapsed time: %f")
 		    }
