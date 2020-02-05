@@ -2,9 +2,11 @@ package utils
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
+	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
 	session "github.com/aws/aws-sdk-go/aws/session"
@@ -33,6 +35,62 @@ func CleanupDirectory(fn string) {
 	}
 }
 
+func visit(files *[]string) filepath.WalkFunc {
+    return func(path string, info os.FileInfo, err error) error {
+        if err != nil {
+            log.Fatal(err)
+        }
+        *files = append(*files, path)
+        return nil
+    }
+}
+
+func walkDir(opts options.Options) []string {
+    var files []string
+    err := filepath.Walk(opts.Directory, visit(&files))
+    if err != nil {
+        panic(err)
+    }
+    return files
+    }
+
+// Copies files from input directory to archive directory
+// Only clears input direct if no failures
+func ArchiveDirectory(opts options.Options) {
+    os.Mkdir(opts.ArchiveDirectory, os.ModePerm)
+
+    files := walkDir(opts)
+
+    for _, file := range files {
+        sourceFileStat, err := os.Stat(file)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        if !sourceFileStat.IsDir() {
+            srcFile, err := os.Open(file)
+            if err != nil {
+                panic(err)
+            }
+            defer srcFile.Close()
+
+            rel_path := GetRelativePath(file, opts.Directory)
+            new_path := path.Join(opts.ArchiveDirectory, rel_path)
+
+            os.MkdirAll(filepath.Dir(new_path), os.ModePerm)
+
+            destFile, err := os.Create(new_path) // creates if file doesn't exist
+            if err != nil {
+                panic(err)
+            }
+            defer destFile.Close()
+
+            _, err = io.Copy(destFile, srcFile) // check first var for number of bytes copied
+
+        }
+    }
+}
+
 // Force to OS filepath seperator and clean filepaths. * Note * does nothing to filepaths with leading slashes
 func ToSlashClean(s string) string {
     return filepath.ToSlash(filepath.Clean(s))
@@ -43,9 +101,8 @@ func ForceBackSlash(s string) string {
     return strings.Replace(ToSlashClean(s), "\\", "/", -1)
 }
 
-
-func GetRelativePath(path string, opts options.Options) string {
-    rel, err := filepath.Rel(opts.Directory, path)
+func GetRelativePath(path string, relative_to string) string {
+    rel, err := filepath.Rel(relative_to, path)
     if err != nil {
         log.Warnf("Unable to get relative path for : '%s'", path)
         return path
@@ -57,7 +114,7 @@ func GetRelativePath(path string, opts options.Options) string {
 // Builds filepath using blackslashes, regardless of operating system
 // is used to make aws-compatible object keys
 func OsAgnostic_HandleAwsKey(org string, folder string, fn string, opts options.Options) string {
-    rel_path := GetRelativePath(fn, opts)
+    rel_path := GetRelativePath(fn, opts.Directory)
 	return ToSlashClean(filepath.Join(org, folder, rel_path))
 }
 
@@ -81,6 +138,7 @@ func GetAwsSession(opts options.Options) *session.Session {
         Config: getAwsConfig(opts),
         // Force enable Shared Config support
         SharedConfigState: session.SharedConfigEnable,
+        AssumeRoleDuration: 12 * time.Hour,
         })
     } else {
         sess, err = session.NewSessionWithOptions(session.Options{

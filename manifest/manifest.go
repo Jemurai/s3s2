@@ -73,7 +73,7 @@ func BuildManifest(batch_folder string, options options.Options) Manifest {
 
 			if !info.IsDir() && !strings.HasSuffix(path, "manifest.json") {
 				sha256hash := hash(path, options)
-				fmt_path := utils.GetRelativePath(path, options)
+				fmt_path := utils.GetRelativePath(path, options.Directory)
 				log.Debugf("Registering file '%s' to manifest as name '%s'...", path, fmt_path)
 				files = append(files, FileDescription{fmt_path, info.Size(), info.ModTime(), sha256hash})
 			}

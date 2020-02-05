@@ -15,6 +15,7 @@ type Options struct {
 	Org       string `json:"org"`
 	Prefix    string `json:"prefix"`
 	Hash      bool   `json:"hash"`
+	ArchiveDirectory string `json:"archive-directory"`
 
 	// Decrypt only
 	File        string `json:"file"`

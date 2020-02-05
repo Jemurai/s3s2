@@ -14,7 +14,7 @@ import (
     session "github.com/aws/aws-sdk-go/aws/session"
 
     log "github.com/sirupsen/logrus"
-	uuid "github.com/satori/go.uuid"
+	// uuid "github.com/satori/go.uuid"
 
     // local
 	archive "github.com/tempuslabs/s3s2/archive"
@@ -43,8 +43,9 @@ that it will be encrypted.`,
         sess := utils.GetAwsSession(opts)
 	    _pubKey := encrypt.GetPubKey(opts)
 
-		fnuuid, _ := uuid.NewV4()
-		batch_folder := opts.Prefix + "_s3s2_" + fnuuid.String()
+		// fnuuid, _ := uuid.NewV4()
+		fnuuid := time.Now().Format("20060102150405") // golang uses numeric constants for timestamp formatting
+		batch_folder := opts.Prefix + "_s3s2_" + fnuuid
 
 		m := manifest.BuildManifest(batch_folder, opts)
 		fmt_manifest_path := filepath.Join(opts.Directory, m.Name)
@@ -68,7 +69,11 @@ that it will be encrypted.`,
 		if err := aws_helpers.UploadFile(sess, batch_folder, fmt_manifest_path, opts); err != nil {
 			log.Error(err)
 		} else {
-		    utils.CleanupFile(fmt_manifest_path)
+		    if opts.ArchiveDirectory != "" {
+		        log.Info("Archiving directory...")
+		        utils.ArchiveDirectory(opts)
+		        utils.CleanupDirectory(opts.Directory)
+		    }
 		    timing(start, "Elapsed time: %f")
 		    }
 	},
@@ -125,17 +130,20 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	prefix := viper.GetString("prefix")
 
 	pubKey := filepath.Clean(viper.GetString("receiver-public-key"))
+
+	archive_directory := viper.GetString("archive-directory")
 	hash := viper.GetBool("hash")
 
 	options := options.Options{
-		Directory: directory,
-		AwsKey:    awsKey,
-		Bucket:    bucket,
-		Region:    region,
-		Org:       org,
-		Prefix:     prefix,
-		PubKey:    pubKey,
-		Hash:      hash,
+		Directory       : directory,
+		AwsKey          : awsKey,
+		Bucket          : bucket,
+		Region          : region,
+		Org             : org,
+		Prefix          : prefix,
+		PubKey          : pubKey,
+		ArchiveDirectory: archive_directory,
+		Hash            : hash,
 	}
 
 	debug := viper.GetBool("debug")
@@ -167,12 +175,14 @@ func init() {
 	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path.")
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 	shareCmd.PersistentFlags().String("receiver-public-key", "", "The receiver's public key.  A local file path.")
+	shareCmd.PersistentFlags().String("archive-directory", "", "If provided, will move contents of upload directory contents to this location after upload.")
 	shareCmd.PersistentFlags().Bool("hash", false, "Should the tool calculate hashes (slow)?")
 
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
 	viper.BindPFlag("prefix", shareCmd.PersistentFlags().Lookup("prefix"))
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
+	viper.BindPFlag("archive-directory", shareCmd.PersistentFlags().Lookup("archive-directory"))
 	viper.BindPFlag("receiver-public-key", shareCmd.PersistentFlags().Lookup("receiver-public-key"))
 	viper.BindPFlag("hash", shareCmd.PersistentFlags().Lookup("hash"))
 
