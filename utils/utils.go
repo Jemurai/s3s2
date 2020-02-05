@@ -64,7 +64,7 @@ func ArchiveDirectory(opts options.Options) {
     for _, file := range files {
         sourceFileStat, err := os.Stat(file)
         if err != nil {
-            log.Fatal(err)
+            panic(err)
         }
 
         if !sourceFileStat.IsDir() {
@@ -86,7 +86,9 @@ func ArchiveDirectory(opts options.Options) {
             defer destFile.Close()
 
             _, err = io.Copy(destFile, srcFile) // check first var for number of bytes copied
-
+            if err != nil {
+                panic(err)
+            }
         }
     }
 }
