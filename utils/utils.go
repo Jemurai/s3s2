@@ -27,11 +27,13 @@ func CleanupFile(fn string) {
 
 // CleanupDirectory deletes a file
 func CleanupDirectory(fn string) {
-	var err = os.RemoveAll(fn)
-	if err != nil {
-		log.Warnf("\tIssue deleting file: '%s'", fn)
-	} else {
-		log.Debugf("\tCleaned up: '%s'", fn)
+    if fn != "/" {
+        var err = os.RemoveAll(fn)
+        if err != nil {
+            log.Warnf("\tIssue deleting file: '%s'", fn)
+        } else {
+            log.Debugf("\tCleaned up: '%s'", fn)
+	    }
 	}
 }
 
@@ -56,8 +58,10 @@ func walkDir(opts options.Options) []string {
 
 // Copies files from input directory to archive directory
 // Only clears input direct if no failures
+// Archive Directory is always lateral to input directory
 func ArchiveDirectory(opts options.Options) {
-    os.Mkdir(opts.ArchiveDirectory, os.ModePerm)
+
+    os.Mkdir(path.Join(filepath.Dir(opts.Directory), opts.ArchiveDirectory), os.ModePerm)
 
     files := walkDir(opts)
 
@@ -75,7 +79,7 @@ func ArchiveDirectory(opts options.Options) {
             defer srcFile.Close()
 
             rel_path := GetRelativePath(file, opts.Directory)
-            new_path := path.Join(opts.ArchiveDirectory, rel_path)
+            new_path := path.Join(filepath.Dir(opts.Directory), opts.ArchiveDirectory, filepath.Base(opts.Directory), rel_path)
 
             os.MkdirAll(filepath.Dir(new_path), os.ModePerm)
 
