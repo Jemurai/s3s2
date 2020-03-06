@@ -31,6 +31,7 @@ func CleanupDirectory(fn string) {
         var err = os.RemoveAll(fn)
         if err != nil {
             log.Warnf("\tIssue deleting file: '%s'", fn)
+            log.Warn(err)
         } else {
             log.Debugf("\tCleaned up: '%s'", fn)
 	    }
