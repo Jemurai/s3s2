@@ -1,7 +1,7 @@
 package archive
 
 import (
-	"github.com/tempuslabs/s3s2/options"
+	"github.com/tempuslabs/s3s2_new/options"
 	"archive/zip"
 	"io"
 	"os"
@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	utils "github.com/tempuslabs/s3s2/utils"
+	utils "github.com/tempuslabs/s3s2_new/utils"
 )
 
 // ZipFile zips the provided file.

@@ -1,4 +1,4 @@
-module github.com/tempuslabs/s3s2
+module github.com/tempuslabs/s3s2_new
 
 go 1.12
 
@@ -16,5 +16,6 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.4.0
+	github.com/tempuslabs/s3s2 v1.0.1
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 )

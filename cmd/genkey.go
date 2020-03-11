@@ -4,7 +4,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/tempuslabs/s3s2/encrypt"
+	"github.com/tempuslabs/s3s2_new/encrypt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

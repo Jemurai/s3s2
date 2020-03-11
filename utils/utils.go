@@ -11,13 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	session "github.com/aws/aws-sdk-go/aws/session"
 
-	options "github.com/tempuslabs/s3s2/options"
+    file "github.com/tempuslabs/s3s2_new/utils/file"
+	options "github.com/tempuslabs/s3s2_new/options"
 	log "github.com/sirupsen/logrus"
 )
 
 // CleanupFile deletes a file
-func CleanupFile(fn string) {
-	var err = os.Remove(fn)
+func CleanupFile(fs file.File) {
+	var err = os.Remove(fs)
 	if err != nil {
 		log.Warnf("\tIssue deleting file: '%s'", fn)
 	} else {
@@ -98,23 +99,29 @@ func ArchiveDirectory(opts options.Options) {
     }
 }
 
-// Force to OS filepath seperator and clean filepaths. * Note * does nothing to filepaths with leading slashes
+// Will remove duplicate os.seperators from input string
+// Will NOT convert forward slashes to back slashes
 func ToSlashClean(s string) string {
     return filepath.ToSlash(filepath.Clean(s))
 }
 
 // Logic to force paths with forward slashes to backslashes. Main solution for Linux handling files uploaded via Windows
-func ForceBackSlash(s string) string {
+func ToPosixPath(s string) string {
     return strings.Replace(ToSlashClean(s), "\\", "/", -1)
 }
 
 func GetRelativePath(path string, relative_to string) string {
     rel, err := filepath.Rel(relative_to, path)
+
     if err != nil {
         log.Warnf("Unable to get relative path for : '%s'", path)
         return path
     } else {
-        return ToSlashClean(rel)
+        if cleaned == true {
+            return ToSlashClean(rel)
+        } else {
+            return path
+            }
     }
 }
 
@@ -139,11 +146,8 @@ func GetAwsSession(opts options.Options) *session.Session {
 
     if opts.AwsProfile != "" {
         sess, err = session.NewSessionWithOptions(session.Options{
-        // Specify profile to load for the session's config
         Profile: opts.AwsProfile,
-        // Provide SDK Config options, such as Region.
         Config: getAwsConfig(opts),
-        // Force enable Shared Config support
         SharedConfigState: session.SharedConfigEnable,
         AssumeRoleDuration: 12 * time.Hour,
         })
@@ -159,7 +163,6 @@ func GetAwsSession(opts options.Options) *session.Session {
     } else {
         log.Debugf("Using AWS session with profile: '%s'.", opts.AwsProfile)
     }
-
     return sess
-
 }
+

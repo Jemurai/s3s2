@@ -15,15 +15,14 @@ import (
     session "github.com/aws/aws-sdk-go/aws/session"
 
     log "github.com/sirupsen/logrus"
-	// uuid "github.com/satori/go.uuid"
 
     // local
-	archive "github.com/tempuslabs/s3s2/archive"
-	encrypt "github.com/tempuslabs/s3s2/encrypt"
-	manifest "github.com/tempuslabs/s3s2/manifest"
-	options "github.com/tempuslabs/s3s2/options"
-	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
-	utils "github.com/tempuslabs/s3s2/utils"
+	archive "github.com/tempuslabs/s3s2_new/archive"
+	encrypt "github.com/tempuslabs/s3s2_new/encrypt"
+	manifest "github.com/tempuslabs/s3s2_new/manifest"
+	options "github.com/tempuslabs/s3s2_new/options"
+	aws_helpers "github.com/tempuslabs/s3s2_new/aws_helpers"
+	utils "github.com/tempuslabs/s3s2_new/utils"
 )
 
 // shareCmd represents the share command
@@ -38,32 +37,29 @@ that it will be encrypted.`,
 
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
+		fnuuid := start.Format("20060102150405") // golang uses numeric constants for timestamp formatting
+
 		opts := buildShareOptions(cmd)
 		checkShareOptions(opts)
 
         sess := utils.GetAwsSession(opts)
 	    _pubKey := encrypt.GetPubKey(opts)
 
-		// fnuuid, _ := uuid.NewV4()
-		fnuuid := time.Now().Format("20060102150405") // golang uses numeric constants for timestamp formatting
 		batch_folder := opts.Prefix + "_s3s2_" + fnuuid
 
-		m := manifest.BuildManifest(batch_folder, opts)
-		fmt_manifest_path := filepath.Join(opts.Directory, m.Name)
+		file_structs = GetFileStructsFromDir(opts.Directory)
+		m := manifest.BuildManifest(file_structs, batch_folder, opts)
 
-        sem := make(chan struct{}, 12)
-		var wg sync.WaitGroup
-		for i := 0; i < len(m.Files); i++ {
+		wg = sync.WaitGroup
 
-			local_path := filepath.Join(opts.Directory, m.Files[i].Name)
-            wg.Add(1)
-			go func(folder string, fn string, opts options.Options, wg *sync.WaitGroup) {
-			    sem <- struct{}{}
-			    defer func() { <-sem }()
-				defer wg.Done()
-				processFile(sess, _pubKey, folder, fn, opts)
-			}(batch_folder, local_path, opts, &wg)
-		}
+        var sem = make(chan int, 12)
+        for fs := range file_structs {
+            sem <- 1
+            defer func() {
+                processFile(sess, _pubKey, batch_folder, fs, opts)
+                <-sem
+            }()
+        }
 
 		wg.Wait()
 
@@ -81,15 +77,16 @@ that it will be encrypted.`,
 	},
 }
 
-func processFile(sess *session.Session, _pubkey *packet.PublicKey, folder string, fn string, opts options.Options) {
+func processFile(sess *session.Session, _pubkey *packet.PublicKey, folder string, fs utils.File, opts options.Options) {
 	log.Debugf("Processing '%s'", fn)
 	start := time.Now()
 
 	fn = archive.ZipFile(fn, opts)
 	archiveTime := timing(start, "\tArchive time (sec): %f")
+
 	log.Debugf("\tCompressing file: '%s'", fn)
 
-	encrypt.Encrypt(_pubkey, fn, opts)
+	encrypt.Encrypt(_pubkey, fs, opts)
 
 	fn = fn + ".gpg"
 
@@ -123,16 +120,12 @@ func timing(start time.Time, message string) time.Time {
 func buildShareOptions(cmd *cobra.Command) options.Options {
 
 	directory := filepath.Clean(viper.GetString("directory"))
-
 	awsKey := viper.GetString("awskey")
 	bucket := viper.GetString("bucket")
 	region := viper.GetString("region")
-
 	org := viper.GetString("org")
 	prefix := viper.GetString("prefix")
-
 	pubKey := filepath.Clean(viper.GetString("receiver-public-key"))
-
 	archive_directory := viper.GetString("archive-directory")
 	hash := viper.GetBool("hash")
 

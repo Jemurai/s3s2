@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os/user"
 
-	"github.com/tempuslabs/s3s2/options"
+	"github.com/tempuslabs/s3s2_new/options"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/c-bata/go-prompt"

@@ -14,9 +14,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/ssm"
 	log "github.com/sirupsen/logrus"
-	options "github.com/tempuslabs/s3s2/options"
-	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
-	utils "github.com/tempuslabs/s3s2/utils"
+	options "github.com/tempuslabs/s3s2_new/options"
+	aws_helpers "github.com/tempuslabs/s3s2_new/aws_helpers"
+	utils "github.com/tempuslabs/s3s2_new/utils"
 
 	// For the signature algorithm.
 	_ "golang.org/x/crypto/ripemd160"

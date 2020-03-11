@@ -17,12 +17,12 @@ import (
 	log "github.com/sirupsen/logrus"
 
     // local
-	archive "github.com/tempuslabs/s3s2/archive"
-	encrypt "github.com/tempuslabs/s3s2/encrypt"
-	manifest "github.com/tempuslabs/s3s2/manifest"
-	options "github.com/tempuslabs/s3s2/options"
-	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
-	utils "github.com/tempuslabs/s3s2/utils"
+	archive "github.com/tempuslabs/s3s2_new/archive"
+	encrypt "github.com/tempuslabs/s3s2_new/encrypt"
+	manifest "github.com/tempuslabs/s3s2_new/manifest"
+	options "github.com/tempuslabs/s3s2_new/options"
+	aws_helpers "github.com/tempuslabs/s3s2_new/aws_helpers"
+	utils "github.com/tempuslabs/s3s2_new/utils"
 )
 
 var opts options.Options
