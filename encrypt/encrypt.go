@@ -12,11 +12,13 @@ import (
 	"strings"
 	"time"
 
+    session "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	log "github.com/sirupsen/logrus"
 	options "github.com/tempuslabs/s3s2_new/options"
 	aws_helpers "github.com/tempuslabs/s3s2_new/aws_helpers"
 	utils "github.com/tempuslabs/s3s2_new/utils"
+	file "github.com/tempuslabs/s3s2_new/utils/file"
 
 	// For the signature algorithm.
 	_ "golang.org/x/crypto/ripemd160"
@@ -32,15 +34,13 @@ func Decrypt(_pubkey *packet.PublicKey, _privkey *packet.PrivateKey, filename st
 }
 
 // Encrypt a file
-func Encrypt(pubkey *packet.PublicKey, filename string, opts options.Options) {
-	encryptFile(pubkey, filename, opts)
+func Encrypt(pubkey *packet.PublicKey, fs file.File, opts options.Options) string {
+	return encryptFile(pubkey, fs, opts)
 }
 
-func GetPubKey(opts options.Options) *packet.PublicKey {
+func GetPubKey(sess *session.Session, opts options.Options) *packet.PublicKey {
     var in io.Reader
     var err error
-
-    sess := utils.GetAwsSession(opts)
 
     // if provided SSM Pub Key, then fetch from SSM
     if opts.SSMPubKey != "" {
@@ -50,17 +50,13 @@ func GetPubKey(opts options.Options) *packet.PublicKey {
     // if provided original filepath value, then use instead
     } else if opts.PubKey != "" {
 		in, err = os.Open(opts.PubKey)
-        if err != nil {
-            log.Error(err)
-        }
+		utils.LogIfError("Unable to open public key file - ", err)
     } else {
         panic("You must provide a public key argument!")
     }
 
 	pub_key_block, err := armor.Decode(in)
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Unable to decode public key block - ", err)
 
 	if pub_key_block.Type != openpgp.PublicKeyType {
 		log.Error("Invalid public key file")
@@ -81,11 +77,9 @@ func GetPubKey(opts options.Options) *packet.PublicKey {
 }
 
 
-func GetPrivKey(opts options.Options) *packet.PrivateKey {
+func GetPrivKey(sess *session.Session, opts options.Options) *packet.PrivateKey {
     var in io.Reader
     var err error
-
-    sess := utils.GetAwsSession(opts)
 
     // if provided SSM Pub Key, then fetch from SSM
     if opts.SSMPrivKey != "" {
@@ -95,18 +89,14 @@ func GetPrivKey(opts options.Options) *packet.PrivateKey {
     // if provided original filepath value, then use instead
     } else if opts.PrivKey != "" {
 		in, err = os.Open(opts.PrivKey)
-        if err != nil {
-            log.Error(err)
-        }
+		utils.LogIfError("Unable to open private key block - ", err)
 
     } else {
-        panic("You must provide a public key argument!")
+        panic("You must provide a private key argument!")
     }
 
 	priv_key_block, err := armor.Decode(in)
-	if err != nil {
-		log.Error(err)
-	}
+    utils.LogIfError("Unable to decode private key block - ", err)
 
 	if priv_key_block.Type != openpgp.PrivateKeyType {
 		log.Error("Invalid private key file")
@@ -115,9 +105,7 @@ func GetPrivKey(opts options.Options) *packet.PrivateKey {
 	reader := packet.NewReader(priv_key_block.Body)
 
 	pkt, err := reader.Next()
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Unable to read private key packet - ", err)
 
 	key, ok := pkt.(*packet.PrivateKey)
 	if !ok {
@@ -190,52 +178,39 @@ func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) 
 	return &e
 }
 
-func encryptFile(pubKey *packet.PublicKey, file string, opts options.Options) {
-    log.Debugf("Encrypting file: '%s'...", file)
+func encryptFile(pubKey *packet.PublicKey, fs file.File, opts options.Options) string {
+    log.Debugf("Encrypting file: '%s'...", fs.OsRelPath)
 
 	to := createEntityFromKeys(pubKey, nil) // We shouldn't have the receiver's private key!
 
-	ofile, err := os.Create(file + ".gpg")
-	if err != nil {
-		log.Error(err)
-	}
+	fn_encrypted := fs.GetEncryptedName()
+
+	ofile, err := os.Create(fn_encrypted)
+    utils.LogIfError("Unable to create encrypted file - ", err)
 	defer ofile.Close()
 
 	w, err := armor.Encode(ofile, "Message", make(map[string]string))
-	if err != nil {
-		log.Error(err)
-	}
-
+	utils.LogIfError("Unable to encode encrypted file location - ", err)
 	defer w.Close()
 
     config := getEncryptionConfig()
 	// Here the signer should be the sender
 	plain, err := openpgp.Encrypt(w, []*openpgp.Entity{to}, nil, &openpgp.FileHints{IsBinary: true}, &config)
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Unable to perform encryption - ", err)
 	defer plain.Close()
 
-	compressed, err := gzip.NewWriterLevel(plain, gzip.BestCompression) //BestCompression)
-	if err != nil {
-		log.Error(err)
-	}
+	compressed, err := gzip.NewWriterLevel(plain, gzip.BestCompression)
+   	utils.LogIfError("Unable to perform compression - ", err)
 
-	infile, err := os.Open(file)
-	if err != nil {
-		log.Error(err)
-	}
-
+	infile, err := os.Open(fs.OsRelPath)
+	utils.LogIfError("Unable to open encrypted file location - ", err)
 	defer infile.Close()
 
-	n, err := io.Copy(compressed, infile)
-	if err != nil {
-		log.Errorf("Error writing encrypted file %d", n)
-	}
+	_, err = io.Copy(compressed, infile)
+	utils.LogIfError("Error writing encrypted file - ", err)
+	log.Debugf("Encrypted file: '%s'", fs.OsRelPath)
 
-	compressed.Close()
-
-	log.Infof("Encrypted file: '%s'", file)
+	return fn_encrypted
 }
 
 func decryptFile(_pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file string, opts options.Options) {
@@ -293,55 +268,39 @@ func decryptFile(_pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file st
 
 func encodePrivateKey(out io.Writer, key *rsa.PrivateKey) {
 	w, err := armor.Encode(out, openpgp.PrivateKeyType, make(map[string]string))
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Error executing armor.Encode for private key", err)
 
 	pgpKey := packet.NewRSAPrivateKey(time.Now(), key)
 	err = pgpKey.Serialize(w)
-	if err != nil {
-		log.Error(err)
-	}
+    utils.LogIfError("Error serializing GPG key for private key", err)
+
 	err = w.Close()
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Error closing public key file", err)
 }
 
 func encodePublicKey(out io.Writer, key *rsa.PrivateKey) {
 	w, err := armor.Encode(out, openpgp.PublicKeyType, make(map[string]string))
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Error executing armor.Encode for public key", err)
 
 	pgpKey := packet.NewRSAPublicKey(time.Now(), &key.PublicKey)
 	err = pgpKey.Serialize(w)
-	if err != nil {
-		log.Error(err)
-	}
+    utils.LogIfError("Error serializing GPG key for public key", err)
+
 	err = w.Close()
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Error closing public key file", err)
 }
 
 // GenerateKeys PGP Keys
 func GenerateKeys(directory string, keyname string, bits int) {
 	key, err := rsa.GenerateKey(rand.Reader, bits)
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Error generating encryption key", err)
 
 	priv, err := os.Create(filepath.Join(directory, keyname+".privkey"))
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Error creating private encryption key", err)
 	defer priv.Close()
 
 	pub, err := os.Create(filepath.Join(directory, keyname+".pubkey"))
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Error creating public encryption key", err)
 	defer pub.Close()
 
 	encodePrivateKey(priv, key)

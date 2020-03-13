@@ -2,101 +2,46 @@ package utils
 
 import (
 	"os"
-	"path"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
-	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
 	session "github.com/aws/aws-sdk-go/aws/session"
 
-    file "github.com/tempuslabs/s3s2_new/utils/file"
 	options "github.com/tempuslabs/s3s2_new/options"
 	log "github.com/sirupsen/logrus"
 )
 
+// Helper function to log a debug message of the elapsed time since input time
+func Timing(start time.Time, message string) time.Time {
+	current := time.Now()
+	elapsed := current.Sub(start)
+	log.Debugf(message, elapsed.Seconds())
+	return current
+}
+
+// Helper function to log an error if exists
+func LogIfError(msg string, err error) {
+    if err != nil {
+        log.Error(msg, err)
+    }
+}
+
 // CleanupFile deletes a file
-func CleanupFile(fs file.File) {
-	var err = os.Remove(fs)
-	if err != nil {
-		log.Warnf("\tIssue deleting file: '%s'", fn)
-	} else {
-		log.Debugf("\tCleaned up: '%s'", fn)
-	}
+func CleanupFile(fs string) error {
+	err := os.Remove(fs)
+	LogIfError("Issue deleting file - ", err)
+	return err
 }
 
 // CleanupDirectory deletes a file
 func CleanupDirectory(fn string) {
     if fn != "/" {
         var err = os.RemoveAll(fn)
-        if err != nil {
-            log.Warnf("\tIssue deleting file: '%s'", fn)
-            log.Warn(err)
-        } else {
-            log.Debugf("\tCleaned up: '%s'", fn)
-	    }
+        LogIfError("Issue deleting file - ", err)
 	}
-}
-
-func visit(files *[]string) filepath.WalkFunc {
-    return func(path string, info os.FileInfo, err error) error {
-        if err != nil {
-            log.Fatal(err)
-        }
-        *files = append(*files, path)
-        return nil
-    }
-}
-
-func walkDir(opts options.Options) []string {
-    var files []string
-    err := filepath.Walk(opts.Directory, visit(&files))
-    if err != nil {
-        panic(err)
-    }
-    return files
-    }
-
-// Copies files from input directory to archive directory
-// Only clears input direct if no failures
-// Archive Directory is always lateral to input directory
-func ArchiveDirectory(opts options.Options) {
-
-    os.Mkdir(path.Join(filepath.Dir(opts.Directory), opts.ArchiveDirectory), os.ModePerm)
-
-    files := walkDir(opts)
-
-    for _, file := range files {
-        sourceFileStat, err := os.Stat(file)
-        if err != nil {
-            panic(err)
-        }
-
-        if !sourceFileStat.IsDir() {
-            srcFile, err := os.Open(file)
-            if err != nil {
-                panic(err)
-            }
-            defer srcFile.Close()
-
-            rel_path := GetRelativePath(file, opts.Directory)
-            new_path := path.Join(filepath.Dir(opts.Directory), opts.ArchiveDirectory, filepath.Base(opts.Directory), rel_path)
-
-            os.MkdirAll(filepath.Dir(new_path), os.ModePerm)
-
-            destFile, err := os.Create(new_path) // creates if file doesn't exist
-            if err != nil {
-                panic(err)
-            }
-            defer destFile.Close()
-
-            _, err = io.Copy(destFile, srcFile) // check first var for number of bytes copied
-            if err != nil {
-                panic(err)
-            }
-        }
-    }
 }
 
 // Will remove duplicate os.seperators from input string
@@ -117,13 +62,9 @@ func GetRelativePath(path string, relative_to string) string {
         log.Warnf("Unable to get relative path for : '%s'", path)
         return path
     } else {
-        if cleaned == true {
-            return ToSlashClean(rel)
-        } else {
-            return path
-            }
+        return ToSlashClean(rel)
+        }
     }
-}
 
 // Builds filepath using blackslashes, regardless of operating system
 // is used to make aws-compatible object keys
@@ -138,8 +79,7 @@ func getAwsConfig(opts options.Options) aws.Config {
     }
 
 
-// Allows for easily adding new command line arguments to
-// influene the creation of AWS sessions
+// Easily add new command line arguments to influence the creation of AWS sessions
 func GetAwsSession(opts options.Options) *session.Session {
     var sess *session.Session
     var err error
@@ -149,20 +89,18 @@ func GetAwsSession(opts options.Options) *session.Session {
         Profile: opts.AwsProfile,
         Config: getAwsConfig(opts),
         SharedConfigState: session.SharedConfigEnable,
-        AssumeRoleDuration: 12 * time.Hour,
         })
     } else {
         sess, err = session.NewSessionWithOptions(session.Options{
         Config: getAwsConfig(opts),
-        AssumeRoleDuration: 12 * time.Hour,
         })
     }
 
     if err != nil {
-        log.Warnf("Unable to make AWS session: '%s'", err)
+        panic(fmt.Sprintf("Unable to make AWS session: '%e'", err))
     } else {
-        log.Debugf("Using AWS session with profile: '%s'.", opts.AwsProfile)
+        log.Warnf("Using AWS profile '%s'", opts.AwsProfile)
     }
+
     return sess
 }
-

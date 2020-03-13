@@ -2,11 +2,9 @@
 package cmd
 
 import (
-	"strings"
 	"sync"
 	"time"
 	"path/filepath"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -17,103 +15,92 @@ import (
     log "github.com/sirupsen/logrus"
 
     // local
-	archive "github.com/tempuslabs/s3s2_new/archive"
+	zip "github.com/tempuslabs/s3s2_new/zip"
 	encrypt "github.com/tempuslabs/s3s2_new/encrypt"
 	manifest "github.com/tempuslabs/s3s2_new/manifest"
 	options "github.com/tempuslabs/s3s2_new/options"
 	aws_helpers "github.com/tempuslabs/s3s2_new/aws_helpers"
+	file "github.com/tempuslabs/s3s2_new/utils/file"
 	utils "github.com/tempuslabs/s3s2_new/utils"
+
 )
 
 // shareCmd represents the share command
 var shareCmd = &cobra.Command{
 	Use:   "share",
-	Short: "Share a file",
-	Long: `Share a file to S3.
+	Short: "Encrypt and upload to S3.",
+	Long: `Given a directory, encrypt all non-private-file contents and upload to S3.
 	
-Behind the scenes, s3s2 checks to ensure the file is 
+Behind the scenes, S3S2 checks to ensure the file is
 either GPG encrypted or passes S3 headers indicating
 that it will be encrypted.`,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		start := time.Now()
-		fnuuid := start.Format("20060102150405") // golang uses numeric constants for timestamp formatting
 
 		opts := buildShareOptions(cmd)
 		checkShareOptions(opts)
 
-        sess := utils.GetAwsSession(opts)
-	    _pubKey := encrypt.GetPubKey(opts)
-
+		start := time.Now()
+		fnuuid := start.Format("20060102150405") // golang uses numeric constants for timestamp formatting
 		batch_folder := opts.Prefix + "_s3s2_" + fnuuid
 
-		file_structs = GetFileStructsFromDir(opts.Directory)
-		m := manifest.BuildManifest(file_structs, batch_folder, opts)
+        sess := utils.GetAwsSession(opts)
+	    _pubKey := encrypt.GetPubKey(sess, opts)
 
-		wg = sync.WaitGroup
+		file_structs, err := file.GetFileStructsFromDir(opts.Directory, opts)
+		utils.LogIfError("Error reading directory", err)
 
-        var sem = make(chan int, 12)
-        for fs := range file_structs {
-            sem <- 1
-            defer func() {
-                processFile(sess, _pubKey, batch_folder, fs, opts)
-                <-sem
-            }()
+		_, err = manifest.BuildManifest(file_structs, batch_folder, opts)
+        utils.LogIfError("Error building Manifest", err)
+
+        var wg sync.WaitGroup
+        sem := make(chan int, 12)
+
+        for _, fs := range file_structs {
+            wg.Add(1)
+            go func(wg *sync.WaitGroup, sess *session.Session, _pubkey *packet.PublicKey, folder string, fs file.File, opts options.Options) {
+                sem <- 1
+                defer func() { <-sem }()
+                defer wg.Done()
+                if processFile(sess, _pubKey, batch_folder, fs, opts) != nil {
+                    log.Error("here")
+                    sess = utils.GetAwsSession(opts)
+                    err = processFile(sess, _pubKey, batch_folder, fs, opts)
+                    panic("Testing")
+                }
+            }(&wg, sess, _pubKey, batch_folder, fs, opts)
         }
-
 		wg.Wait()
-
-		if err := aws_helpers.UploadFile(sess, batch_folder, fmt_manifest_path, opts); err != nil {
-			log.Error(err)
-		} else {
-		    if opts.ArchiveDirectory != "" {
-		        log.Info("Archiving directory...")
-		        utils.ArchiveDirectory(opts)
-		        utils.CleanupDirectory(opts.Directory)
-		        os.MkdirAll(opts.Directory, os.ModePerm)
-		    }
-		    timing(start, "Elapsed time: %f")
-		    }
+		utils.Timing(start, "Elapsed time: %f")
 	},
 }
 
-func processFile(sess *session.Session, _pubkey *packet.PublicKey, folder string, fs utils.File, opts options.Options) {
-	log.Debugf("Processing '%s'", fn)
+func processFile(sess *session.Session, _pubkey *packet.PublicKey, folder string, fs file.File, opts options.Options) error {
+	log.Debugf("Processing '%s'", fs.OsRelPath)
 	start := time.Now()
 
-	fn = archive.ZipFile(fn, opts)
-	archiveTime := timing(start, "\tArchive time (sec): %f")
+	fn_zip := zip.ZipFile(fs, opts)
+	timeArchive := utils.Timing(start, "\tArchive time (sec): %f")
 
-	log.Debugf("\tCompressing file: '%s'", fn)
+	fn_crypt := encrypt.Encrypt(_pubkey, fs, opts)
+	timeEncrypt := utils.Timing(timeArchive, "\tEncrypt time (sec): %f")
 
-	encrypt.Encrypt(_pubkey, fs, opts)
+	err := aws_helpers.UploadFile(sess, folder, fs, opts)
 
-	fn = fn + ".gpg"
-
-	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
-
-	err := aws_helpers.UploadFile(sess, folder, fn, opts)
 	if err != nil {
-		log.Fatal(err)
+	    log.Error("Error uploading file - ", err)
+	} else {
+	    utils.Timing(timeEncrypt, "\tUpload time (sec): %f")
+	    log.Debugf("\tProcessed '%s'", fs.OsRelPath)
 	}
 
-    log.Debug("Cleaning...")
-	utils.CleanupFile(fn)
-	if strings.HasSuffix(fn, ".gpg") {
-		zipName := strings.TrimSuffix(fn, ".gpg")
-		utils.CleanupFile(zipName)
-	}
+	// cleanup regardless of the upload succeeding or not, we will retry outside of this function
+    utils.CleanupFile(fn_zip)
+	utils.CleanupFile(fn_crypt)
 
-	timing(encryptTime, "\tUpload time (sec): %f")
-	log.Debugf("\tProcessed '%s'", fn)
+    return err
 }
 
-func timing(start time.Time, message string) time.Time {
-	current := time.Now()
-	elapsed := current.Sub(start)
-	log.Debugf(message, elapsed.Seconds())
-	return current
-}
 
 // buildContext sets up the ShareContext we're going to use
 // to keep track of our state while we go.
@@ -127,7 +114,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	prefix := viper.GetString("prefix")
 	pubKey := filepath.Clean(viper.GetString("receiver-public-key"))
 	archive_directory := viper.GetString("archive-directory")
-	hash := viper.GetBool("hash")
+	aws_profile := viper.GetString("aws-profile")
 
 	options := options.Options{
 		Directory       : directory,
@@ -138,7 +125,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 		Prefix          : prefix,
 		PubKey          : pubKey,
 		ArchiveDirectory: archive_directory,
-		Hash            : hash,
+		AwsProfile      : aws_profile,
 	}
 
 	debug := viper.GetBool("debug")
@@ -171,7 +158,7 @@ func init() {
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 	shareCmd.PersistentFlags().String("receiver-public-key", "", "The receiver's public key.  A local file path.")
 	shareCmd.PersistentFlags().String("archive-directory", "", "If provided, will move contents of upload directory contents to this location after upload.")
-	shareCmd.PersistentFlags().Bool("hash", false, "Should the tool calculate hashes (slow)?")
+	shareCmd.PersistentFlags().String("aws-profile", "", "AWS Profile to use for the session.")
 
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
@@ -179,7 +166,7 @@ func init() {
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
 	viper.BindPFlag("archive-directory", shareCmd.PersistentFlags().Lookup("archive-directory"))
 	viper.BindPFlag("receiver-public-key", shareCmd.PersistentFlags().Lookup("receiver-public-key"))
-	viper.BindPFlag("hash", shareCmd.PersistentFlags().Lookup("hash"))
+	viper.BindPFlag("aws-profile", shareCmd.PersistentFlags().Lookup("aws-profile"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})

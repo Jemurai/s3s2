@@ -14,6 +14,7 @@ import (
 
 	options "github.com/tempuslabs/s3s2_new/options"
 	utils "github.com/tempuslabs/s3s2_new/utils"
+	file "github.com/tempuslabs/s3s2_new/utils/file"
 
      // aws
 	"github.com/aws/aws-sdk-go/aws"
@@ -26,18 +27,16 @@ import (
 // The share command should only allow this to get called
 // IFF there is a key or the file has been gpg encrypted
 // for the receiver.
-func UploadFile(sess *session.Session, folder string, filename string, opts options.Options) error {
-	log.Debugf("\tUploading file: '%s'", filename)
+func UploadFile(sess *session.Session, folder string, fs file.File, opts options.Options) error {
+	log.Debugf("\tUploading file: '%s'", fs.OsRelPath)
 
-	uploader := s3manager.NewUploader(sess)
+	encrypted_file := fs.OpenEncryptedFile()
+	defer encrypted_file.Close()
 
-	f, err := os.Open(filename)
-	if err != nil {
-		return fmt.Errorf("Failed to open file '%q', %v", filename, err)
-	}
-
-	basename := f.Name()
+	basename := encrypted_file.Name()
 	aws_key := utils.OsAgnostic_HandleAwsKey(opts.Org, folder, basename, opts)
+
+    uploader := s3manager.NewUploader(sess)
 
 	if opts.AwsKey != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{
@@ -45,26 +44,23 @@ func UploadFile(sess *session.Session, folder string, filename string, opts opti
 			Key:                  aws.String(aws_key),
 			ServerSideEncryption: aws.String("aws:kms"),
 			SSEKMSKeyId:          aws.String(opts.AwsKey),
-			Body:                 f,
+			Body:                 encrypted_file,
 		})
-		if err != nil {
-			return fmt.Errorf("Failed to upload file: '%v'", err)
-		}
-
-		log.Infof("\tFile '%s' uploaded to: '%s'", filename, result.Location)
+		utils.LogIfError("Failed to upload file: ", err)
+		log.Infof("\tFile '%s' uploaded to: '%s'", fs.OsRelPath, result.Location)
+		return err
 
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(opts.Bucket),
 			Key:    aws.String(aws_key),
-			Body:   f,
+			Body:   encrypted_file,
 		})
-		if err != nil {
-			return fmt.Errorf("Failed to upload file: %v", err)
-		}
-		log.Infof("\tFile '%s' uploaded to: '%s'", filename, result.Location)
+		utils.LogIfError("Failed to upload file: ", err)
+		log.Infof("\tFile '%s' uploaded to: '%s'", fs.OsRelPath, result.Location)
+		return err
 	}
-	return nil
+
 }
 
 // DownloadFile function to download a file from S3.
@@ -78,7 +74,7 @@ func DownloadFile(sess *session.Session, string, pullfile string, opts options.O
 
 	os.MkdirAll(dirname, os.ModePerm)
 
-	file, err := os.Create(utils.ForceBackSlash(filename))
+	file, err := os.Create(utils.ToPosixPath(filename))
 	if err != nil {
 		log.Debugf("\tDownloading file (2): %s", filename)
 		return "", fmt.Errorf("Unable to open file %q, %v", filename, err)
