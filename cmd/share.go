@@ -99,7 +99,7 @@ func processFile(sess *session.Session, _pubkey *packet.PublicKey, folder string
 	fn_encrypt := fs.GetEncryptedName(opts.Directory)
 	aws_key := fs.GetEncryptedName(folder)
 
-	zip.ZipFile(fn_source, fn_zip, opts)
+	zip.ZipFile(fn_source, fn_zip, opts.Directory)
 	encrypt.EncryptFile(_pubkey, fn_zip, fn_encrypt, opts)
 
 	err := aws_helpers.UploadFile(sess, opts.Org, aws_key, fn_encrypt, opts)

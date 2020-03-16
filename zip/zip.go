@@ -1,7 +1,6 @@
 package zip
 
 import (
-	"github.com/tempuslabs/s3s2_new/options"
 	"archive/zip"
 	"io"
 	"os"
@@ -13,7 +12,7 @@ import (
 )
 
 // ZipFile zips the provided file.
-func ZipFile(InputFn string, OutputFn string, Opts options.Options) string {
+func ZipFile(InputFn string, OutputFn string, directory string) string {
 
     log.Infof("Zipping file '%s' to '%s'", InputFn, OutputFn)
 
@@ -37,7 +36,7 @@ func ZipFile(InputFn string, OutputFn string, Opts options.Options) string {
 
 	// Using FileInfoHeader() above only uses the basename of the file. If we want
 	// to preserve the folder structure we can overwrite this with the full path.
-	header.Name = strings.Replace(InputFn, Opts.Directory, "", -1)
+	header.Name = strings.Replace(InputFn, directory, "", -1)
 
 	// Change to deflate to gain better compression
 	// see http://golang.org/pkg/archive/zip/#pkg-constants
