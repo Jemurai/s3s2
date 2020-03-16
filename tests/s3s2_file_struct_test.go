@@ -3,7 +3,7 @@ package main_test
 import (
     "runtime"
 	"testing"
-	file "github.com/tempuslabs/s3s2_new/file"
+	file "github.com/tempuslabs/s3s2/file"
 	"github.com/stretchr/testify/assert"
 
 )

@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	session "github.com/aws/aws-sdk-go/aws/session"
 
-	options "github.com/tempuslabs/s3s2_new/options"
+	options "github.com/tempuslabs/s3s2/options"
 	log "github.com/sirupsen/logrus"
 )
 

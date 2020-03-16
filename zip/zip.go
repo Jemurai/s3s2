@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	utils "github.com/tempuslabs/s3s2_new/utils"
+	utils "github.com/tempuslabs/s3s2/utils"
 )
 
 // ZipFile zips the provided file.

@@ -1,7 +1,7 @@
 
 package main
 import (
-"github.com/tempuslabs/s3s2_new/cmd"
+"github.com/tempuslabs/s3s2/cmd"
 log "github.com/sirupsen/logrus"
 )
 

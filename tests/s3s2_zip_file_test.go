@@ -7,7 +7,7 @@ import (
     "io"
 	"os"
 
-	zip "github.com/tempuslabs/s3s2_new/zip"
+	zip "github.com/tempuslabs/s3s2/zip"
 
 	"github.com/stretchr/testify/assert"
 
@@ -62,7 +62,7 @@ func TestZipFileCreation(t * testing.T) {
     writeToFile(input_file_path, "This is test data")
     assert.True(fileExists(input_file_path))
 
-    zip.ZipFile(input_file_path, output_file_path, "s3s2_new")
+    zip.ZipFile(input_file_path, output_file_path, "s3s2")
     assert.True(fileExists(output_file_path))
 }
 

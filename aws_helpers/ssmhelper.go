@@ -3,7 +3,7 @@ package aws_helpers
 
 import (
 	"github.com/aws/aws-sdk-go/service/ssm"
-	utils "github.com/tempuslabs/s3s2_new/utils"
+	utils "github.com/tempuslabs/s3s2/utils"
 )
 
 // Fetches value associated with provided keyname from SSM store

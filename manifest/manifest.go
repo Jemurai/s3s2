@@ -11,9 +11,9 @@ import (
     "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 
-	file "github.com/tempuslabs/s3s2_new/file"
-	utils "github.com/tempuslabs/s3s2_new/utils"
-	options "github.com/tempuslabs/s3s2_new/options"
+	file "github.com/tempuslabs/s3s2/file"
+	utils "github.com/tempuslabs/s3s2/utils"
+	options "github.com/tempuslabs/s3s2/options"
 
 )
 

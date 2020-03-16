@@ -10,8 +10,8 @@ import (
 	// local
 
 	session "github.com/aws/aws-sdk-go/aws/session"
-	options "github.com/tempuslabs/s3s2_new/options"
-	utils "github.com/tempuslabs/s3s2_new/utils"
+	options "github.com/tempuslabs/s3s2/options"
+	utils "github.com/tempuslabs/s3s2/utils"
 
      // aws
 	"github.com/aws/aws-sdk-go/aws"

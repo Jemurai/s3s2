@@ -18,13 +18,13 @@ import (
 	log "github.com/sirupsen/logrus"
 
     // local
-	zip "github.com/tempuslabs/s3s2_new/zip"
-	encrypt "github.com/tempuslabs/s3s2_new/encrypt"
-	manifest "github.com/tempuslabs/s3s2_new/manifest"
-	options "github.com/tempuslabs/s3s2_new/options"
-	aws_helpers "github.com/tempuslabs/s3s2_new/aws_helpers"
-	utils "github.com/tempuslabs/s3s2_new/utils"
-	file "github.com/tempuslabs/s3s2_new/file"
+	zip "github.com/tempuslabs/s3s2/zip"
+	encrypt "github.com/tempuslabs/s3s2/encrypt"
+	manifest "github.com/tempuslabs/s3s2/manifest"
+	options "github.com/tempuslabs/s3s2/options"
+	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
+	utils "github.com/tempuslabs/s3s2/utils"
+	file "github.com/tempuslabs/s3s2/file"
 )
 
 
