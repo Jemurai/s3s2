@@ -19,6 +19,12 @@ pipeline {
                 sh script: 'echo Built successfully!', label: "Build successful!"
                 }
         }
+        stage('test') {
+            steps {
+                sh script: "./deploy_tests.sh", label: "Testing..."
+                sh script: 'echo Tests completed successfully!', label: "Tests successful!"
+                }
+        }
         stage('publish') {
             environment {
                 // credentials() will create three environment variables
