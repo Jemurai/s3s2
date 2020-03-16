@@ -6,20 +6,19 @@ type Options struct {
 	Region string `json:"region"`
 	Bucket string `json:"bucket"`
 	AwsProfile string `json:"awsprofile"`
+	Directory string `json:"directory"`
+	Org       string `json:"org"`
 
 	// Encrypt only
 	PubKey    string `json:"pubkey"`
 	SSMPubKey string `json:"ssmpubkey"`
-	Directory string `json:"directory"`
 	AwsKey    string `json:"awskey"`
-	Org       string `json:"org"`
 	Prefix    string `json:"prefix"`
 	Hash      bool   `json:"hash"`
 	ArchiveDirectory string `json:"archive-directory"`
 
 	// Decrypt only
 	File        string `json:"file"`
-	Destination string `json:"destination"`
 	PrivKey     string `json:"privkey"`
 	SSMPrivKey string `json:"ssmprivkey"`
 }

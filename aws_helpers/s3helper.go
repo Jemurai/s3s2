@@ -2,19 +2,16 @@
 package aws_helpers
 
 import (
-	"fmt"
 	"os"
-	"path/filepath"
 
+    "path/filepath"
 	log "github.com/sirupsen/logrus"
 
 	// local
 
 	session "github.com/aws/aws-sdk-go/aws/session"
-
 	options "github.com/tempuslabs/s3s2_new/options"
 	utils "github.com/tempuslabs/s3s2_new/utils"
-	file "github.com/tempuslabs/s3s2_new/utils/file"
 
      // aws
 	"github.com/aws/aws-sdk-go/aws"
@@ -22,77 +19,64 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
-// UploadFile to S3.
-// If the key is present, use it.  If it is not, don't.
-// The share command should only allow this to get called
-// IFF there is a key or the file has been gpg encrypted
-// for the receiver.
-func UploadFile(sess *session.Session, folder string, fs file.File, opts options.Options) error {
-	log.Debugf("\tUploading file: '%s'", fs.OsRelPath)
-
-	encrypted_file := fs.OpenEncryptedFile()
-	defer encrypted_file.Close()
-
-	basename := encrypted_file.Name()
-	aws_key := utils.OsAgnostic_HandleAwsKey(opts.Org, folder, basename, opts)
-
+// Upload
+func UploadFile(sess *session.Session, org string, aws_key string, local_path string, opts options.Options) error {
     uploader := s3manager.NewUploader(sess)
+
+    file, err := os.Open(local_path)
+    utils.LogIfError("Failed to open file for upload - ", err)
+
+    final_key := filepath.Join(org, aws_key)
+    log.Infof("About to upload aws key '%s' from file '%s'", final_key, local_path)
 
 	if opts.AwsKey != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket:               aws.String(opts.Bucket),
-			Key:                  aws.String(aws_key),
+			Key:                  aws.String(final_key),
 			ServerSideEncryption: aws.String("aws:kms"),
 			SSEKMSKeyId:          aws.String(opts.AwsKey),
-			Body:                 encrypted_file,
+			Body:                 file,
 		})
 		utils.LogIfError("Failed to upload file: ", err)
-		log.Infof("\tFile '%s' uploaded to: '%s'", fs.OsRelPath, result.Location)
+		log.Infof("\tFile '%s' uploaded to: '%s'", file.Name(), result.Location)
+		file.Close()
 		return err
 
 	} else {
 		result, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(opts.Bucket),
-			Key:    aws.String(aws_key),
-			Body:   encrypted_file,
+			Key:    aws.String(final_key),
+			Body:   file,
 		})
 		utils.LogIfError("Failed to upload file: ", err)
-		log.Infof("\tFile '%s' uploaded to: '%s'", fs.OsRelPath, result.Location)
+		log.Infof("\tFile '%s' uploaded to: '%s'", file.Name(), result.Location)
+		file.Close()
 		return err
 	}
-
 }
 
-// DownloadFile function to download a file from S3.
-func DownloadFile(sess *session.Session, string, pullfile string, opts options.Options) (string, error) {
-	log.Debugf("\tDownloading file (1): %s", pullfile)
+// Download
+func DownloadFile(sess *session.Session, bucket string, org string, aws_key string, target_path string) (string, error) {
+	file, err := os.Create(target_path)
+	utils.LogIfError("Unable to open file - ", err)
+
+	final_key := filepath.Join(org, aws_key)
+
+	log.Infof("Attempting to download from key '%s' to file '%s'", final_key, target_path)
 
 	downloader := s3manager.NewDownloader(sess)
 
-    filename := pullfile
-	dirname := filepath.Dir(filename)
-
-	os.MkdirAll(dirname, os.ModePerm)
-
-	file, err := os.Create(utils.ToPosixPath(filename))
-	if err != nil {
-		log.Debugf("\tDownloading file (2): %s", filename)
-		return "", fmt.Errorf("Unable to open file %q, %v", filename, err)
-	}
-	defer file.Close()
-
-	log.Debugf("\tDownloading file (3): About to pull %s, from bucket %s", filename, opts.Bucket)
-
 	_, err = downloader.Download(file,
 		&s3.GetObjectInput{
-			Bucket: aws.String(opts.Bucket),
-			Key:    aws.String(filename),
+			Bucket: aws.String(bucket),
+			Key:    aws.String(final_key),
 		})
 
-	if err != nil {
-		log.Debugf("\tDownloading file (4): %s", filename)
-		log.Errorf("Unable to download item '%q', %v", filename, err)
-	}
-	log.Debugf("\tDownloading file (5): %s", file.Name())
-	return file.Name(), nil
+    if err != nil {
+        log.Errorf("Error downloading file '%s'", final_key)
+    }
+
+	defer file.Close()
+
+	return file.Name(), err
 }

@@ -18,7 +18,6 @@ import (
 	options "github.com/tempuslabs/s3s2_new/options"
 	aws_helpers "github.com/tempuslabs/s3s2_new/aws_helpers"
 	utils "github.com/tempuslabs/s3s2_new/utils"
-	file "github.com/tempuslabs/s3s2_new/utils/file"
 
 	// For the signature algorithm.
 	_ "golang.org/x/crypto/ripemd160"
@@ -28,16 +27,9 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
-// Decrypt a file with a provided key.
-func Decrypt(_pubkey *packet.PublicKey, _privkey *packet.PrivateKey, filename string, opts options.Options) {
-	decryptFile(_pubkey, _privkey, filename, opts)
-}
 
-// Encrypt a file
-func Encrypt(pubkey *packet.PublicKey, fs file.File, opts options.Options) string {
-	return encryptFile(pubkey, fs, opts)
-}
-
+// Logic to fetch the public encryption key
+// depending on arguments provided, will get from SSM or provided file
 func GetPubKey(sess *session.Session, opts options.Options) *packet.PublicKey {
     var in io.Reader
     var err error
@@ -64,9 +56,7 @@ func GetPubKey(sess *session.Session, opts options.Options) *packet.PublicKey {
 
 	reader := packet.NewReader(pub_key_block.Body)
 	pkt, err := reader.Next()
-	if err != nil {
-		log.Error(err)
-	}
+	utils.LogIfError("Error creating reader from public key block - ", err)
 
 	key, ok := pkt.(*packet.PublicKey)
 	if !ok {
@@ -81,7 +71,7 @@ func GetPrivKey(sess *session.Session, opts options.Options) *packet.PrivateKey 
     var in io.Reader
     var err error
 
-    // if provided SSM Pub Key, then fetch from SSM
+    // if provided SSM Priv Key, then fetch from SSM
     if opts.SSMPrivKey != "" {
         ssm_service := ssm.New(sess)
 		in = strings.NewReader(aws_helpers.GetParameterValue(ssm_service, opts.SSMPrivKey))
@@ -178,14 +168,12 @@ func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) 
 	return &e
 }
 
-func encryptFile(pubKey *packet.PublicKey, fs file.File, opts options.Options) string {
-    log.Debugf("Encrypting file: '%s'...", fs.OsRelPath)
+func EncryptFile(pubKey *packet.PublicKey, InputFn string, OutputFn string, Opts options.Options) string {
+    log.Infof("Encrypting file '%s' to '%s'...", InputFn, OutputFn)
 
 	to := createEntityFromKeys(pubKey, nil) // We shouldn't have the receiver's private key!
 
-	fn_encrypted := fs.GetEncryptedName()
-
-	ofile, err := os.Create(fn_encrypted)
+	ofile, err := os.Create(OutputFn)
     utils.LogIfError("Unable to create encrypted file - ", err)
 	defer ofile.Close()
 
@@ -202,66 +190,59 @@ func encryptFile(pubKey *packet.PublicKey, fs file.File, opts options.Options) s
 	compressed, err := gzip.NewWriterLevel(plain, gzip.BestCompression)
    	utils.LogIfError("Unable to perform compression - ", err)
 
-	infile, err := os.Open(fs.OsRelPath)
+	infile, err := os.Open(InputFn)
 	utils.LogIfError("Unable to open encrypted file location - ", err)
 	defer infile.Close()
 
 	_, err = io.Copy(compressed, infile)
 	utils.LogIfError("Error writing encrypted file - ", err)
-	log.Debugf("Encrypted file: '%s'", fs.OsRelPath)
+	log.Debugf("Encrypted file: '%s'", infile.Name())
+	compressed.Close()
 
-	return fn_encrypted
+	return OutputFn
 }
 
-func decryptFile(_pubkey *packet.PublicKey, _privkey *packet.PrivateKey, file string, opts options.Options) {
+func DecryptFile(_pubkey *packet.PublicKey, _privkey *packet.PrivateKey, InputFn string, OutputFn string, opts options.Options) {
+    log.Infof("Decrypting file '%s' to '%s'", InputFn, OutputFn)
 
-	entity := createEntityFromKeys(_pubkey, _privkey)
-
-	in, err := os.Open(file)
+	in, err := os.Open(InputFn)
 	if err != nil {
-		log.Error(err)
+	    log.Errorf("Unable to open decrypted file location - '%s'", InputFn)
 	}
 	defer in.Close()
 
 	block, err := armor.Decode(in)
-	if err != nil {
-		log.Error(err)
+	if block.Type != "Message" {
+		log.Errorf("Invalid message type")
 	}
 
-	if block.Type != "Message" {
-		log.Error("Invalid message type")
-	}
+	entity := createEntityFromKeys(_pubkey, _privkey)
 
 	var entityList openpgp.EntityList
+
 	entityList = append(entityList, entity)
 
 	config := getEncryptionConfig()
 	md, err := openpgp.ReadMessage(block.Body, entityList, nil, &config)
 	if err != nil {
-		log.Error(err)
-	}
+		log.Errorf("Unable to read encryption - '%s'", InputFn)
+    }
 
 	compressed, err := gzip.NewReader(md.UnverifiedBody)
 	if err != nil {
-		log.Error(err)
-	}
+	    log.Errorf("Unable to open compressed encryption information location - '%s'", InputFn)
+    }
 	defer compressed.Close()
-	if err != nil {
-		log.Error(err)
-	}
 
-	dfn := strings.TrimSuffix(file, ".gpg")
-	dfile, err := os.Create(dfn)
+	dfile, err := os.Create(OutputFn)
 	if err != nil {
-		log.Error(err)
-	}
-
+	    log.Errorf("Unable to create encrypted file location - '%s'", OutputFn)
+    }
 	defer dfile.Close()
 
-	n, err := io.Copy(dfile, compressed)
+	_, err = io.Copy(dfile, compressed)
 	if err != nil {
-		log.Error(err, "Error reading encrypted file")
-		log.Errorf("Decrypted %d bytes", n)
+	    log.Errorf("Unable to open encrypted file location - '%s'", OutputFn)
 	}
 
 }

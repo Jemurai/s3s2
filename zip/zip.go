@@ -10,22 +10,21 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	utils "github.com/tempuslabs/s3s2_new/utils"
-	file "github.com/tempuslabs/s3s2_new/utils/file"
 )
 
 // ZipFile zips the provided file.
-func ZipFile(fs file.File, options options.Options) string {
+func ZipFile(InputFn string, OutputFn string, Opts options.Options) string {
 
-    zip_file_name := fs.GetZipName()
+    log.Infof("Zipping file '%s' to '%s'", InputFn, OutputFn)
 
-	newZipFile, err := os.Create(zip_file_name)
+	newZipFile, err := os.Create(OutputFn)
 	utils.LogIfError("Unable to create zip file - ", err)
 	defer newZipFile.Close()
 
 	zipWriter := zip.NewWriter(newZipFile)
 	defer zipWriter.Close()
 
-	zipfile, err := os.Open(zip_file_name)
+	zipfile, err := os.Open(InputFn)
 	utils.LogIfError("Unable to open zip file location - ", err)
 	defer zipfile.Close()
 
@@ -38,7 +37,7 @@ func ZipFile(fs file.File, options options.Options) string {
 
 	// Using FileInfoHeader() above only uses the basename of the file. If we want
 	// to preserve the folder structure we can overwrite this with the full path.
-	header.Name = strings.Replace(zip_file_name, options.Directory, "", -1)
+	header.Name = strings.Replace(InputFn, Opts.Directory, "", -1)
 
 	// Change to deflate to gain better compression
 	// see http://golang.org/pkg/archive/zip/#pkg-constants
@@ -51,65 +50,52 @@ func ZipFile(fs file.File, options options.Options) string {
 		log.Error(err)
 	}
 
-	return zip_file_name
+	return OutputFn
 }
 
 // UnZipFile uncompresses and archive
-func UnZipFile(filename string, destination string) string {
+func UnZipFile(InputFn string, OutputFn string, directory string) string {
 
-	returnFn := filename
-	if !strings.HasSuffix(filename, ".zip") {
-		log.Warnf("Skipping file because it is not a zip file, %s", filename)
-		return returnFn
+	if !strings.HasSuffix(InputFn, ".zip") {
+		log.Warnf("Skipping file because it is not a zip file, %s", OutputFn)
+		return OutputFn
 	}
 
-	zReader, err := zip.OpenReader(filename)
-	if err != nil {
-		log.Error(err)
-	}
+	zReader, err := zip.OpenReader(InputFn)
+    utils.LogIfError("Unable to open zipreader - ", err)
 	defer zReader.Close()
+
 	for _, file := range zReader.Reader.File {
 
 		zippedFile, err := file.Open()
-		if err != nil {
-			log.Fatal(err)
-		}
+        utils.LogIfError("Unable to open zipped file - ", err)
 		defer zippedFile.Close()
 
-		cleaned_name := utils.ToPosixPath(file.Name)
-
-		extractedFilePath := filepath.Join(
-			destination,
-			"decrypted",
-			cleaned_name,
-		)
+		extractedFilePath := filepath.Join(directory, OutputFn)
 
 		log.Debugf("\tExtracted path: %s", extractedFilePath)
 		if file.FileInfo().IsDir() {
 			log.Println("Directory Created:", extractedFilePath)
 			os.MkdirAll(extractedFilePath, file.Mode())
 		} else {
-			log.Println("\tFile extracted:", cleaned_name)
+			log.Println("\tFile extracted:", OutputFn)
 
 			extractDir := filepath.Dir(extractedFilePath)
 			os.MkdirAll(extractDir, os.ModePerm)
+
 			outputFile, err := os.OpenFile(
 				extractedFilePath,
 				os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 				file.Mode(),
 			)
-			if err != nil {
-				log.Fatal(err)
-			}
+            utils.LogIfError("Unable to open zipreader - ", err)
 
 			_, err = io.Copy(outputFile, zippedFile)
-			if err != nil {
-				log.Fatal(err)
-			}
-			returnFn = utils.ToPosixPath(cleaned_name)
+			utils.LogIfError("Unable to create zipped file - ", err)
+
 			outputFile.Close()
 		}
 	}
-	log.Debugf("\tUnzip returning file name %s", returnFn)
-	return returnFn
+	log.Debugf("\tUnzip returning file name %s", OutputFn)
+	return OutputFn
 }

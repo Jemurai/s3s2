@@ -2,7 +2,6 @@ package utils
 
 import (
 	"os"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -46,13 +45,14 @@ func CleanupDirectory(fn string) {
 
 // Will remove duplicate os.seperators from input string
 // Will NOT convert forward slashes to back slashes
+// Serves as general cleansing function
 func ToSlashClean(s string) string {
     return filepath.ToSlash(filepath.Clean(s))
 }
 
 // Logic to force paths with forward slashes to backslashes. Main solution for Linux handling files uploaded via Windows
 func ToPosixPath(s string) string {
-    return strings.Replace(ToSlashClean(s), "\\", "/", -1)
+    return ToSlashClean(strings.Replace(s, "\\", "/", -1))
 }
 
 func GetRelativePath(path string, relative_to string) string {
@@ -73,33 +73,29 @@ func OsAgnostic_HandleAwsKey(org string, folder string, fn string, opts options.
 	return ToSlashClean(filepath.Join(org, folder, rel_path))
 }
 
+// Influence creation of AWS config
 func getAwsConfig(opts options.Options) aws.Config {
-    conf := aws.Config{Region: aws.String(opts.Region),}
+    conf := aws.Config{Region: aws.String(opts.Region)}
     return conf
     }
-
 
 // Easily add new command line arguments to influence the creation of AWS sessions
 func GetAwsSession(opts options.Options) *session.Session {
     var sess *session.Session
-    var err error
 
+    // intended on share when ran on partner server using credential files
     if opts.AwsProfile != "" {
-        sess, err = session.NewSessionWithOptions(session.Options{
+        sess = session.Must(session.NewSessionWithOptions(session.Options{
         Profile: opts.AwsProfile,
         Config: getAwsConfig(opts),
         SharedConfigState: session.SharedConfigEnable,
-        })
+        }))
+    // intended on decrypt when ran on ec2 instance using sts
     } else {
-        sess, err = session.NewSessionWithOptions(session.Options{
+        sess = session.Must(session.NewSessionWithOptions(session.Options{
         Config: getAwsConfig(opts),
-        })
-    }
-
-    if err != nil {
-        panic(fmt.Sprintf("Unable to make AWS session: '%e'", err))
-    } else {
-        log.Warnf("Using AWS profile '%s'", opts.AwsProfile)
+        AssumeRoleDuration: 12 * time.Hour,
+        }))
     }
 
     return sess

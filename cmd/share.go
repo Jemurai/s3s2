@@ -20,7 +20,7 @@ import (
 	manifest "github.com/tempuslabs/s3s2_new/manifest"
 	options "github.com/tempuslabs/s3s2_new/options"
 	aws_helpers "github.com/tempuslabs/s3s2_new/aws_helpers"
-	file "github.com/tempuslabs/s3s2_new/utils/file"
+	file "github.com/tempuslabs/s3s2_new/file"
 	utils "github.com/tempuslabs/s3s2_new/utils"
 
 )
@@ -30,10 +30,14 @@ var shareCmd = &cobra.Command{
 	Use:   "share",
 	Short: "Encrypt and upload to S3.",
 	Long: `Given a directory, encrypt all non-private-file contents and upload to S3.
-	
-Behind the scenes, S3S2 checks to ensure the file is
-either GPG encrypted or passes S3 headers indicating
-that it will be encrypted.`,
+    Behind the scenes, S3S2 checks to ensure the file is
+    either GPG encrypted or passes S3 headers indicating
+    that it will be encrypted.`,
+	// bug in Viper prevents shared flag names across different commands
+	// placing these in the prerun is the workaround
+	PreRun: func(cmd *cobra.Command, args []string) {
+		viper.BindPFlag("directory", cmd.Flags().Lookup("directory"))
+	},
 
 	Run: func(cmd *cobra.Command, args []string) {
 
@@ -50,48 +54,57 @@ that it will be encrypted.`,
 		file_structs, err := file.GetFileStructsFromDir(opts.Directory, opts)
 		utils.LogIfError("Error reading directory", err)
 
-		_, err = manifest.BuildManifest(file_structs, batch_folder, opts)
+		m, err := manifest.BuildManifest(file_structs, batch_folder, opts)
         utils.LogIfError("Error building Manifest", err)
 
         var wg sync.WaitGroup
-        sem := make(chan int, 12)
+        sem := make(chan int, 10)
 
-        for _, fs := range file_structs {
+        for _, fs := range m.Files {
             wg.Add(1)
             go func(wg *sync.WaitGroup, sess *session.Session, _pubkey *packet.PublicKey, folder string, fs file.File, opts options.Options) {
                 sem <- 1
                 defer func() { <-sem }()
                 defer wg.Done()
                 if processFile(sess, _pubKey, batch_folder, fs, opts) != nil {
-                    log.Error("here")
                     sess = utils.GetAwsSession(opts)
                     err = processFile(sess, _pubKey, batch_folder, fs, opts)
-                    panic("Testing")
                 }
             }(&wg, sess, _pubKey, batch_folder, fs, opts)
         }
 		wg.Wait()
+
+		// create manifest in top-level directory
+        manifest_aws_key := filepath.Join(batch_folder, m.Name)
+        manifest_local := filepath.Join(opts.Directory, m.Name)
+
+		err = aws_helpers.UploadFile(sess, opts.Org, manifest_aws_key, manifest_local, opts)
 		utils.Timing(start, "Elapsed time: %f")
 	},
 }
 
 func processFile(sess *session.Session, _pubkey *packet.PublicKey, folder string, fs file.File, opts options.Options) error {
-	log.Debugf("Processing '%s'", fs.OsRelPath)
+	log.Debugf("Processing '%s'", fs.Name)
 	start := time.Now()
 
-	fn_zip := zip.ZipFile(fs, opts)
+	fn_source := fs.GetSourceName(opts.Directory)
+	fn_zip :=fs.GetZipName(opts.Directory)
+	fn_encrypt := fs.GetEncryptedName(opts.Directory)
+	aws_key := fs.GetEncryptedName(folder)
+
+	zip.ZipFile(fn_source, fn_zip, opts)
 	timeArchive := utils.Timing(start, "\tArchive time (sec): %f")
 
-	fn_crypt := encrypt.Encrypt(_pubkey, fs, opts)
+	fn_crypt := encrypt.EncryptFile(_pubkey, fn_zip, fn_encrypt, opts)
 	timeEncrypt := utils.Timing(timeArchive, "\tEncrypt time (sec): %f")
 
-	err := aws_helpers.UploadFile(sess, folder, fs, opts)
+	err := aws_helpers.UploadFile(sess, opts.Org, aws_key, fn_encrypt, opts)
 
 	if err != nil {
 	    log.Error("Error uploading file - ", err)
 	} else {
 	    utils.Timing(timeEncrypt, "\tUpload time (sec): %f")
-	    log.Debugf("\tProcessed '%s'", fs.OsRelPath)
+	    log.Debugf("\tProcessed '%s'", fs.Name)
 	}
 
 	// cleanup regardless of the upload succeeding or not, we will retry outside of this function
@@ -152,7 +165,7 @@ func init() {
 
 	shareCmd.PersistentFlags().String("directory", "", "The directory to zip, encrypt and share.")
 	shareCmd.MarkFlagRequired("directory")
-	shareCmd.PersistentFlags().String("org", "", "The organization that owns the files.")
+	shareCmd.PersistentFlags().String("org", "", "The Org that owns the files.")
 	shareCmd.MarkFlagRequired("org")
 	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path.")
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
