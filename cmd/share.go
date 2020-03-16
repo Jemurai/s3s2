@@ -2,11 +2,10 @@
 package cmd
 
 import (
-	"strings"
 	"sync"
 	"time"
+	"fmt"
 	"path/filepath"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -15,126 +14,128 @@ import (
     session "github.com/aws/aws-sdk-go/aws/session"
 
     log "github.com/sirupsen/logrus"
-	// uuid "github.com/satori/go.uuid"
 
     // local
-	archive "github.com/tempuslabs/s3s2/archive"
+	zip "github.com/tempuslabs/s3s2/zip"
 	encrypt "github.com/tempuslabs/s3s2/encrypt"
 	manifest "github.com/tempuslabs/s3s2/manifest"
 	options "github.com/tempuslabs/s3s2/options"
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
+	file "github.com/tempuslabs/s3s2/file"
 	utils "github.com/tempuslabs/s3s2/utils"
+
 )
 
 // shareCmd represents the share command
 var shareCmd = &cobra.Command{
 	Use:   "share",
-	Short: "Share a file",
-	Long: `Share a file to S3.
-	
-Behind the scenes, s3s2 checks to ensure the file is 
-either GPG encrypted or passes S3 headers indicating
-that it will be encrypted.`,
-
+	Short: "Encrypt and upload to S3",
+	Long: `Given a directory, encrypt all non-private-file contents and upload to S3.
+    Behind the scenes, S3S2 checks to ensure the file is
+    either GPG encrypted or passes S3 headers indicating
+    that it will be encrypted.`,
+	// bug in Viper prevents shared flag names across different commands
+	// placing these in the prerun is the workaround
+	PreRun: func(cmd *cobra.Command, args []string) {
+		viper.BindPFlag("directory", cmd.Flags().Lookup("directory"))
+		viper.BindPFlag("org", cmd.Flags().Lookup("org"))
+		viper.BindPFlag("region", cmd.Flags().Lookup("region"))
+		viper.BindPFlag("parallelism", cmd.Flags().Lookup("parallelism"))
+		cmd.MarkFlagRequired("directory")
+		cmd.MarkFlagRequired("org")
+		cmd.MarkFlagRequired("region")
+	},
 	Run: func(cmd *cobra.Command, args []string) {
-		start := time.Now()
+
 		opts := buildShareOptions(cmd)
 		checkShareOptions(opts)
 
-        sess := utils.GetAwsSession(opts)
-	    _pubKey := encrypt.GetPubKey(opts)
-
-		// fnuuid, _ := uuid.NewV4()
-		fnuuid := time.Now().Format("20060102150405") // golang uses numeric constants for timestamp formatting
+		start := time.Now()
+		fnuuid := start.Format("20060102150405") // golang uses numeric constants for timestamp formatting
 		batch_folder := opts.Prefix + "_s3s2_" + fnuuid
 
-		m := manifest.BuildManifest(batch_folder, opts)
-		fmt_manifest_path := filepath.Join(opts.Directory, m.Name)
+        sess := utils.GetAwsSession(opts)
+	    _pubKey := encrypt.GetPubKey(sess, opts)
 
-        sem := make(chan struct{}, 12)
-		var wg sync.WaitGroup
-		for i := 0; i < len(m.Files); i++ {
+		file_structs, err := file.GetFileStructsFromDir(opts.Directory, opts)
+		utils.PanicIfError("Error reading directory", err)
 
-			local_path := filepath.Join(opts.Directory, m.Files[i].Name)
+		m, err := manifest.BuildManifest(file_structs, batch_folder, opts)
+        utils.PanicIfError("Error building Manifest", err)
+
+        var wg sync.WaitGroup
+        sem := make(chan int, opts.Parallelism)
+
+        for _, fs := range m.Files {
             wg.Add(1)
-			go func(folder string, fn string, opts options.Options, wg *sync.WaitGroup) {
-			    sem <- struct{}{}
-			    defer func() { <-sem }()
-				defer wg.Done()
-				processFile(sess, _pubKey, folder, fn, opts)
-			}(batch_folder, local_path, opts, &wg)
-		}
-
+            go func(wg *sync.WaitGroup, sess *session.Session, _pubkey *packet.PublicKey, folder string, fs file.File, opts options.Options) {
+                sem <- 1
+                defer func() { <-sem }()
+                defer wg.Done()
+                if processFile(sess, _pubKey, batch_folder, fs, opts) != nil {
+                    sess = utils.GetAwsSession(opts)
+                    err = processFile(sess, _pubKey, batch_folder, fs, opts)
+                }
+            }(&wg, sess, _pubKey, batch_folder, fs, opts)
+        }
 		wg.Wait()
 
-		if err := aws_helpers.UploadFile(sess, batch_folder, fmt_manifest_path, opts); err != nil {
-			log.Error(err)
-		} else {
-		    if opts.ArchiveDirectory != "" {
-		        log.Info("Archiving directory...")
-		        utils.ArchiveDirectory(opts)
-		        utils.CleanupDirectory(opts.Directory)
-		        os.MkdirAll(opts.Directory, os.ModePerm)
-		    }
-		    timing(start, "Elapsed time: %f")
-		    }
+		// create manifest in top-level directory
+        manifest_aws_key := filepath.Join(batch_folder, m.Name)
+        manifest_local := filepath.Join(opts.Directory, m.Name)
+
+		err = aws_helpers.UploadFile(sess, opts.Org, manifest_aws_key, manifest_local, opts)
+
+		if opts.ArchiveDirectory != "" {
+		    utils.PerformArchive(opts.Directory, opts.ArchiveDirectory)
+		}
+
+		utils.Timing(start, "Elapsed time: %f")
 	},
 }
 
-func processFile(sess *session.Session, _pubkey *packet.PublicKey, folder string, fn string, opts options.Options) {
-	log.Debugf("Processing '%s'", fn)
+func processFile(sess *session.Session, _pubkey *packet.PublicKey, folder string, fs file.File, opts options.Options) error {
+	log.Debugf("Processing '%s'", fs.Name)
 	start := time.Now()
 
-	fn = archive.ZipFile(fn, opts)
-	archiveTime := timing(start, "\tArchive time (sec): %f")
-	log.Debugf("\tCompressing file: '%s'", fn)
+	fn_source := fs.GetSourceName(opts.Directory)
+	fn_zip :=fs.GetZipName(opts.Directory)
+	fn_encrypt := fs.GetEncryptedName(opts.Directory)
+	aws_key := fs.GetEncryptedName(folder)
 
-	encrypt.Encrypt(_pubkey, fn, opts)
+	zip.ZipFile(fn_source, fn_zip, opts.Directory)
+	encrypt.EncryptFile(_pubkey, fn_zip, fn_encrypt, opts)
 
-	fn = fn + ".gpg"
+	err := aws_helpers.UploadFile(sess, opts.Org, aws_key, fn_encrypt, opts)
 
-	encryptTime := timing(archiveTime, "\tEncrypt time (sec): %f")
-
-	err := aws_helpers.UploadFile(sess, folder, fn, opts)
 	if err != nil {
-		log.Fatal(err)
+	    log.Error("Error uploading file - ", err)
+	} else {
+	    utils.Timing(start, fmt.Sprintf("\tProcessed file '%s' in ", fs.Name) + "%f seconds")
 	}
 
-    log.Debug("Cleaning...")
-	utils.CleanupFile(fn)
-	if strings.HasSuffix(fn, ".gpg") {
-		zipName := strings.TrimSuffix(fn, ".gpg")
-		utils.CleanupFile(zipName)
-	}
+	// cleanup regardless of the upload succeeding or not, we will retry outside of this function
+    utils.CleanupFile(fn_zip)
+	utils.CleanupFile(fn_encrypt)
 
-	timing(encryptTime, "\tUpload time (sec): %f")
-	log.Debugf("\tProcessed '%s'", fn)
+    return err
 }
 
-func timing(start time.Time, message string) time.Time {
-	current := time.Now()
-	elapsed := current.Sub(start)
-	log.Debugf(message, elapsed.Seconds())
-	return current
-}
 
 // buildContext sets up the ShareContext we're going to use
 // to keep track of our state while we go.
 func buildShareOptions(cmd *cobra.Command) options.Options {
 
 	directory := filepath.Clean(viper.GetString("directory"))
-
 	awsKey := viper.GetString("awskey")
 	bucket := viper.GetString("bucket")
 	region := viper.GetString("region")
-
 	org := viper.GetString("org")
 	prefix := viper.GetString("prefix")
-
 	pubKey := filepath.Clean(viper.GetString("receiver-public-key"))
-
 	archive_directory := viper.GetString("archive-directory")
-	hash := viper.GetBool("hash")
+	aws_profile := viper.GetString("aws-profile")
+	parallelism := viper.GetInt("parallelism")
 
 	options := options.Options{
 		Directory       : directory,
@@ -145,7 +146,8 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 		Prefix          : prefix,
 		PubKey          : pubKey,
 		ArchiveDirectory: archive_directory,
-		Hash            : hash,
+		AwsProfile      : aws_profile,
+		Parallelism     : parallelism,
 	}
 
 	debug := viper.GetBool("debug")
@@ -159,11 +161,15 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 }
 
 func checkShareOptions(options options.Options) {
-	if options.AwsKey != "" || options.PubKey != "" {
-		// OK, that's good.  Looks like we have a key.
-	} else {
+	if options.AwsKey == "" && options.PubKey == "" {
 		log.Warn("Need to supply either AWS Key for S3 level encryption or a public key for GPG encryption or both!")
 		log.Panic("Insufficient key material to perform safe encryption.")
+	} else if options.Bucket == "" {
+		log.Warn("Need to supply a bucket.")
+		log.Panic("Insufficient information to perform decryption.")
+	} else if options.Directory == "" {
+		log.Warn("Need to supply a destination for the files to decrypt.  Should be a local path.")
+		log.Panic("Insufficient information to perform decryption.")
 	}
 }
 
@@ -172,13 +178,15 @@ func init() {
 
 	shareCmd.PersistentFlags().String("directory", "", "The directory to zip, encrypt and share.")
 	shareCmd.MarkFlagRequired("directory")
-	shareCmd.PersistentFlags().String("org", "", "The organization that owns the files.")
+	shareCmd.PersistentFlags().String("org", "", "The Org that owns the files.")
 	shareCmd.MarkFlagRequired("org")
+	shareCmd.PersistentFlags().Int("parallelism", 10, "The maximum number of files to download and decrypt at a time.")
+
 	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path.")
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 	shareCmd.PersistentFlags().String("receiver-public-key", "", "The receiver's public key.  A local file path.")
 	shareCmd.PersistentFlags().String("archive-directory", "", "If provided, will move contents of upload directory contents to this location after upload.")
-	shareCmd.PersistentFlags().Bool("hash", false, "Should the tool calculate hashes (slow)?")
+	shareCmd.PersistentFlags().String("aws-profile", "", "AWS Profile to use for the session.")
 
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
@@ -186,7 +194,8 @@ func init() {
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
 	viper.BindPFlag("archive-directory", shareCmd.PersistentFlags().Lookup("archive-directory"))
 	viper.BindPFlag("receiver-public-key", shareCmd.PersistentFlags().Lookup("receiver-public-key"))
-	viper.BindPFlag("hash", shareCmd.PersistentFlags().Lookup("hash"))
+	viper.BindPFlag("aws-profile", shareCmd.PersistentFlags().Lookup("aws-profile"))
+	viper.BindPFlag("parallelism", shareCmd.PersistentFlags().Lookup("parallelism"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})

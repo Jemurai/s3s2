@@ -5,6 +5,8 @@ go 1.12
 require (
 	github.com/aws/aws-sdk-go v1.23.6
 	github.com/c-bata/go-prompt v0.2.3
+	github.com/json-iterator/go v1.1.9
+	github.com/karrick/godirwalk v1.15.3
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/mattn/go-tty v0.0.0-20190424173100-523744f04859 // indirect
@@ -16,5 +18,6 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.4.0
+	github.com/stretchr/testify v1.3.0
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 )

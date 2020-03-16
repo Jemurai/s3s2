@@ -2,164 +2,124 @@ package utils
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
-	"io"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
-	session "github.com/aws/aws-sdk-go/aws/session"
+	"github.com/karrick/godirwalk"
 
+	session "github.com/aws/aws-sdk-go/aws/session"
 	options "github.com/tempuslabs/s3s2/options"
 	log "github.com/sirupsen/logrus"
 )
 
-// CleanupFile deletes a file
-func CleanupFile(fn string) {
-	var err = os.Remove(fn)
-	if err != nil {
-		log.Warnf("\tIssue deleting file: '%s'", fn)
-	} else {
-		log.Debugf("\tCleaned up: '%s'", fn)
-	}
+// Helper function to log a debug message of the elapsed time since input time
+func Timing(start time.Time, message string) time.Time {
+	current := time.Now()
+	elapsed := current.Sub(start)
+	log.Debugf(message, elapsed.Seconds())
+	return current
 }
 
-// CleanupDirectory deletes a file
-func CleanupDirectory(fn string) {
-    if fn != "/" {
-        var err = os.RemoveAll(fn)
-        if err != nil {
-            log.Warnf("\tIssue deleting file: '%s'", fn)
-            log.Warn(err)
-        } else {
-            log.Debugf("\tCleaned up: '%s'", fn)
-	    }
-	}
-}
-
-func visit(files *[]string) filepath.WalkFunc {
-    return func(path string, info os.FileInfo, err error) error {
-        if err != nil {
-            log.Fatal(err)
-        }
-        *files = append(*files, path)
-        return nil
-    }
-}
-
-func walkDir(opts options.Options) []string {
-    var files []string
-    err := filepath.Walk(opts.Directory, visit(&files))
+// Helper function to log an error if exists
+func PanicIfError(msg string, err error) {
     if err != nil {
-        panic(err)
-    }
-    return files
-    }
-
-// Copies files from input directory to archive directory
-// Only clears input direct if no failures
-// Archive Directory is always lateral to input directory
-func ArchiveDirectory(opts options.Options) {
-
-    os.Mkdir(path.Join(filepath.Dir(opts.Directory), opts.ArchiveDirectory), os.ModePerm)
-
-    files := walkDir(opts)
-
-    for _, file := range files {
-        sourceFileStat, err := os.Stat(file)
-        if err != nil {
-            panic(err)
-        }
-
-        if !sourceFileStat.IsDir() {
-            srcFile, err := os.Open(file)
-            if err != nil {
-                panic(err)
-            }
-            defer srcFile.Close()
-
-            rel_path := GetRelativePath(file, opts.Directory)
-            new_path := path.Join(filepath.Dir(opts.Directory), opts.ArchiveDirectory, filepath.Base(opts.Directory), rel_path)
-
-            os.MkdirAll(filepath.Dir(new_path), os.ModePerm)
-
-            destFile, err := os.Create(new_path) // creates if file doesn't exist
-            if err != nil {
-                panic(err)
-            }
-            defer destFile.Close()
-
-            _, err = io.Copy(destFile, srcFile) // check first var for number of bytes copied
-            if err != nil {
-                panic(err)
-            }
-        }
+        log.Error(msg)
+        panic(msg)
     }
 }
 
-// Force to OS filepath seperator and clean filepaths. * Note * does nothing to filepaths with leading slashes
+// CleanupFile deletes a file
+func CleanupFile(fs string) error {
+	err := os.Remove(fs)
+	PanicIfError("Issue deleting file - ", err)
+	return err
+}
+
+
+// Will remove duplicate os.seperators from input string
+// Will NOT convert forward slashes to back slashes
+// Serves as general cleansing function
 func ToSlashClean(s string) string {
     return filepath.ToSlash(filepath.Clean(s))
 }
 
 // Logic to force paths with forward slashes to backslashes. Main solution for Linux handling files uploaded via Windows
-func ForceBackSlash(s string) string {
-    return strings.Replace(ToSlashClean(s), "\\", "/", -1)
+func ToPosixPath(s string) string {
+    return ToSlashClean(strings.Replace(s, "\\", "/", -1))
 }
 
 func GetRelativePath(path string, relative_to string) string {
     rel, err := filepath.Rel(relative_to, path)
+
     if err != nil {
         log.Warnf("Unable to get relative path for : '%s'", path)
         return path
     } else {
         return ToSlashClean(rel)
+        }
     }
-}
 
-// Builds filepath using blackslashes, regardless of operating system
-// is used to make aws-compatible object keys
-func OsAgnostic_HandleAwsKey(org string, folder string, fn string, opts options.Options) string {
-    rel_path := GetRelativePath(fn, opts.Directory)
-	return ToSlashClean(filepath.Join(org, folder, rel_path))
-}
-
+// Influence creation of AWS config
 func getAwsConfig(opts options.Options) aws.Config {
-    conf := aws.Config{Region: aws.String(opts.Region),}
+    conf := aws.Config{Region: aws.String(opts.Region)}
     return conf
     }
 
-
-// Allows for easily adding new command line arguments to
-// influene the creation of AWS sessions
+// Easily add new command line arguments to influence the creation of AWS sessions
 func GetAwsSession(opts options.Options) *session.Session {
     var sess *session.Session
-    var err error
 
+    // intended on share when ran on partner server using credential files
     if opts.AwsProfile != "" {
-        sess, err = session.NewSessionWithOptions(session.Options{
-        // Specify profile to load for the session's config
+        sess = session.Must(session.NewSessionWithOptions(session.Options{
         Profile: opts.AwsProfile,
-        // Provide SDK Config options, such as Region.
         Config: getAwsConfig(opts),
-        // Force enable Shared Config support
         SharedConfigState: session.SharedConfigEnable,
-        AssumeRoleDuration: 12 * time.Hour,
-        })
+        }))
+    // intended on decrypt when ran on ec2 instance using sts
     } else {
-        sess, err = session.NewSessionWithOptions(session.Options{
+        sess = session.Must(session.NewSessionWithOptions(session.Options{
         Config: getAwsConfig(opts),
         AssumeRoleDuration: 12 * time.Hour,
-        })
-    }
-
-    if err != nil {
-        log.Warnf("Unable to make AWS session: '%s'", err)
-    } else {
-        log.Debugf("Using AWS session with profile: '%s'.", opts.AwsProfile)
+        }))
     }
 
     return sess
+}
 
+func PerformArchive(input_dir string, archive_dir string) {
+
+    log.Infof("Archiving files from '%s' into '%s'...", input_dir, archive_dir)
+
+    err := godirwalk.Walk(input_dir, &godirwalk.Options{
+        Callback: func(osPathname string, de *godirwalk.Dirent) error {
+            var err error
+            if !strings.HasSuffix(filepath.Base(osPathname), "manifest.json") && !de.IsDir() {
+                rel, err := filepath.Rel(input_dir, osPathname)
+                PanicIfError(fmt.Sprintf("Unable to get relative path for '%s'", osPathname), err)
+
+                archive_full_path := filepath.Join(archive_dir, input_dir, rel)
+                archive_dir, archive_path := filepath.Split(archive_full_path)
+
+                os.MkdirAll(archive_dir, os.ModePerm)
+
+                err = os.Rename(osPathname, archive_full_path)
+                PanicIfError(fmt.Sprintf("Unable to move '%s' to '%s'", osPathname, archive_path), err)
+            }
+            return err
+        },
+        Unsorted: true, // (optional) set true for faster yet non-deterministic enumeration (see godoc)
+    })
+
+    // renaming all files out of a directory will remove the directory - so here we recreate
+
+    if err == nil {
+        os.RemoveAll(input_dir)
+        os.MkdirAll(input_dir, os.ModePerm)
+    }
+
+    log.Info("Archiving complete.")
 }
