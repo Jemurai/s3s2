@@ -68,3 +68,5 @@ func GetFileStructsFromDir(directory string, opts options.Options) ([]File, erro
 
     return file_structs, err
 }
+
+

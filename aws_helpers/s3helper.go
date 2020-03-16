@@ -26,7 +26,7 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
     file, err := os.Open(local_path)
     utils.PanicIfError("Failed to open file for upload - ", err)
 
-    final_key := utils.ToPosixPath(filepath.Join(org, aws_key))
+    final_key := utils.ToPosixPath(filepath.Clean(filepath.Join(org, aws_key)))
     log.Debugf("Uploading file '%s' to aws key '%s'", local_path, final_key)
 
 	if opts.AwsKey != "" {

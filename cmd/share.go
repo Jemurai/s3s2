@@ -86,6 +86,10 @@ var shareCmd = &cobra.Command{
 
 		err = aws_helpers.UploadFile(sess, opts.Org, manifest_aws_key, manifest_local, opts)
 
+		if opts.ArchiveDirectory != "" {
+		    utils.PerformArchive(opts.Directory, opts.ArchiveDirectory)
+		}
+
 		utils.Timing(start, "Elapsed time: %f")
 	},
 }
