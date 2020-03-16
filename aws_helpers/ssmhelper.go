@@ -15,7 +15,7 @@ func GetParameterValue(ssm_service *ssm.SSM, keyname string) string {
 		WithDecryption: &withDecryption,
 	})
 
-	utils.LogIfError("Error getting SSM parameter - ", err)
+	utils.PanicIfError("Error getting SSM parameter - ", err)
 
     return *param.Parameter.Value
 }

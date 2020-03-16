@@ -4,7 +4,8 @@ import (
     "strings"
     "path/filepath"
 
-    "github.com/karrick/godirwalk"
+    godirwalk "github.com/karrick/godirwalk"
+    log "github.com/sirupsen/logrus"
 
     options "github.com/tempuslabs/s3s2_new/options"
 	utils "github.com/tempuslabs/s3s2_new/utils"
@@ -51,8 +52,14 @@ func GetFileStructsFromDir(directory string, opts options.Options) ([]File, erro
 	            not_gpg := !strings.HasSuffix(basename, ".zip.gpg")
 
                 if not_dir && not_manifest && not_zip && not_gpg && not_private {
-                    file_path := utils.GetRelativePath(file_path, opts.Directory)
+
+                    log.Debugf("Registering '%s' to manifest", file_path)
+
+                    file_path, err := filepath.Rel(opts.Directory, file_path)
+                    utils.PanicIfError("Unable to discern relative path - ", err)
                     file_structs = append(file_structs, File{Name: file_path})
+                } else {
+                    log.Debugf("Skipping over file '%s' - this file will NOT be encrypted...", file_path)
                 }
                 return nil
                 },

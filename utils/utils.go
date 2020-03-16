@@ -22,16 +22,16 @@ func Timing(start time.Time, message string) time.Time {
 }
 
 // Helper function to log an error if exists
-func LogIfError(msg string, err error) {
+func PanicIfError(msg string, err error) {
     if err != nil {
-        log.Error(msg, err)
+        panic(msg)
     }
 }
 
 // CleanupFile deletes a file
 func CleanupFile(fs string) error {
 	err := os.Remove(fs)
-	LogIfError("Issue deleting file - ", err)
+	PanicIfError("Issue deleting file - ", err)
 	return err
 }
 
@@ -39,7 +39,7 @@ func CleanupFile(fs string) error {
 func CleanupDirectory(fn string) {
     if fn != "/" {
         var err = os.RemoveAll(fn)
-        LogIfError("Issue deleting file - ", err)
+        PanicIfError("Issue deleting file - ", err)
 	}
 }
 
@@ -65,13 +65,6 @@ func GetRelativePath(path string, relative_to string) string {
         return ToSlashClean(rel)
         }
     }
-
-// Builds filepath using blackslashes, regardless of operating system
-// is used to make aws-compatible object keys
-func OsAgnostic_HandleAwsKey(org string, folder string, fn string, opts options.Options) string {
-    rel_path := GetRelativePath(fn, opts.Directory)
-	return ToSlashClean(filepath.Join(org, folder, rel_path))
-}
 
 // Influence creation of AWS config
 func getAwsConfig(opts options.Options) aws.Config {

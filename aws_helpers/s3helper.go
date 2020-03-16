@@ -24,10 +24,10 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
     uploader := s3manager.NewUploader(sess)
 
     file, err := os.Open(local_path)
-    utils.LogIfError("Failed to open file for upload - ", err)
+    utils.PanicIfError("Failed to open file for upload - ", err)
 
-    final_key := filepath.Join(org, aws_key)
-    log.Infof("About to upload aws key '%s' from file '%s'", final_key, local_path)
+    final_key := utils.ToPosixPath(filepath.Join(org, aws_key))
+    log.Debugf("Uploading file '%s' to aws key '%s'", local_path, final_key)
 
 	if opts.AwsKey != "" {
 		result, err := uploader.Upload(&s3manager.UploadInput{
@@ -37,8 +37,8 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
 			SSEKMSKeyId:          aws.String(opts.AwsKey),
 			Body:                 file,
 		})
-		utils.LogIfError("Failed to upload file: ", err)
-		log.Infof("\tFile '%s' uploaded to: '%s'", file.Name(), result.Location)
+		utils.PanicIfError("Failed to upload file: ", err)
+		log.Infof("File '%s' uploaded to: '%s'", file.Name(), result.Location)
 		file.Close()
 		return err
 
@@ -48,8 +48,8 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
 			Key:    aws.String(final_key),
 			Body:   file,
 		})
-		utils.LogIfError("Failed to upload file: ", err)
-		log.Infof("\tFile '%s' uploaded to: '%s'", file.Name(), result.Location)
+		utils.PanicIfError("Failed to upload file: ", err)
+		log.Infof("File '%s' uploaded to: '%s'", file.Name(), result.Location)
 		file.Close()
 		return err
 	}
@@ -58,11 +58,11 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
 // Download
 func DownloadFile(sess *session.Session, bucket string, org string, aws_key string, target_path string) (string, error) {
 	file, err := os.Create(target_path)
-	utils.LogIfError("Unable to open file - ", err)
+	utils.PanicIfError("Unable to open file - ", err)
 
 	final_key := filepath.Join(org, aws_key)
 
-	log.Infof("Attempting to download from key '%s' to file '%s'", final_key, target_path)
+	log.Infof("Downloading from key '%s' to file '%s'", final_key, target_path)
 
 	downloader := s3manager.NewDownloader(sess)
 

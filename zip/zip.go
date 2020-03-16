@@ -18,22 +18,22 @@ func ZipFile(InputFn string, OutputFn string, Opts options.Options) string {
     log.Infof("Zipping file '%s' to '%s'", InputFn, OutputFn)
 
 	newZipFile, err := os.Create(OutputFn)
-	utils.LogIfError("Unable to create zip file - ", err)
+	utils.PanicIfError("Unable to create zip file - ", err)
 	defer newZipFile.Close()
 
 	zipWriter := zip.NewWriter(newZipFile)
 	defer zipWriter.Close()
 
 	zipfile, err := os.Open(InputFn)
-	utils.LogIfError("Unable to open zip file location - ", err)
+	utils.PanicIfError("Unable to open zip file location - ", err)
 	defer zipfile.Close()
 
 	// Get the file information
 	info, err := zipfile.Stat()
-	utils.LogIfError("Unable to get zip file information - ", err)
+	utils.PanicIfError("Unable to get zip file information - ", err)
 
 	header, err := zip.FileInfoHeader(info)
-	utils.LogIfError("Unable to get zip file header info - ", err)
+	utils.PanicIfError("Unable to get zip file header info - ", err)
 
 	// Using FileInfoHeader() above only uses the basename of the file. If we want
 	// to preserve the folder structure we can overwrite this with the full path.
@@ -44,7 +44,7 @@ func ZipFile(InputFn string, OutputFn string, Opts options.Options) string {
 	header.Method = zip.Deflate
 
 	writer, err := zipWriter.CreateHeader(header)
-	utils.LogIfError("Unable to create header info - ", err)
+	utils.PanicIfError("Unable to create header info - ", err)
 
 	if _, err = io.Copy(writer, zipfile); err != nil {
 		log.Error(err)
@@ -62,23 +62,21 @@ func UnZipFile(InputFn string, OutputFn string, directory string) string {
 	}
 
 	zReader, err := zip.OpenReader(InputFn)
-    utils.LogIfError("Unable to open zipreader - ", err)
+    utils.PanicIfError("Unable to open zipreader - ", err)
 	defer zReader.Close()
 
 	for _, file := range zReader.Reader.File {
 
 		zippedFile, err := file.Open()
-        utils.LogIfError("Unable to open zipped file - ", err)
+        utils.PanicIfError("Unable to open zipped file - ", err)
 		defer zippedFile.Close()
 
 		extractedFilePath := filepath.Join(directory, OutputFn)
 
-		log.Debugf("\tExtracted path: %s", extractedFilePath)
 		if file.FileInfo().IsDir() {
-			log.Println("Directory Created:", extractedFilePath)
 			os.MkdirAll(extractedFilePath, file.Mode())
+			log.Debugf("Directory Created: '%s'", extractedFilePath)
 		} else {
-			log.Println("\tFile extracted:", OutputFn)
 
 			extractDir := filepath.Dir(extractedFilePath)
 			os.MkdirAll(extractDir, os.ModePerm)
@@ -88,14 +86,14 @@ func UnZipFile(InputFn string, OutputFn string, directory string) string {
 				os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 				file.Mode(),
 			)
-            utils.LogIfError("Unable to open zipreader - ", err)
+            utils.PanicIfError("Unable to open zipreader - ", err)
+            log.Debugf("\tFile extracted to: '%s'", extractedFilePath)
 
 			_, err = io.Copy(outputFile, zippedFile)
-			utils.LogIfError("Unable to create zipped file - ", err)
+			utils.PanicIfError("Unable to create zipped file - ", err)
 
 			outputFile.Close()
 		}
 	}
-	log.Debugf("\tUnzip returning file name %s", OutputFn)
 	return OutputFn
 }

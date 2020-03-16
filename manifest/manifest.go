@@ -35,10 +35,10 @@ func ReadManifest(file string) Manifest {
 	var m Manifest
 
 	rfile, err := os.Open(file)
-	utils.LogIfError("Error opening manifest - ", err)
+	utils.PanicIfError("Error opening manifest - ", err)
 
 	bytes, err := ioutil.ReadAll(rfile)
-    utils.LogIfError("Error reading manifest - ", err)
+    utils.PanicIfError("Error reading manifest - ", err)
 
 	jsoniter.Unmarshal(bytes, &m)
 
@@ -65,7 +65,7 @@ func BuildManifest(file_structs []file.File, batch_folder string, options option
 	}
 
 	err = writeManifest(manifest, options.Directory)
-	utils.LogIfError("Error getting current user - ", err)
+	utils.PanicIfError("Error getting current user - ", err)
 
 	return manifest, err
 }

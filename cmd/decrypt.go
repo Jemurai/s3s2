@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"os"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -39,9 +40,11 @@ var decryptCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		viper.BindPFlag("directory", cmd.Flags().Lookup("directory"))
 		viper.BindPFlag("org", cmd.Flags().Lookup("org"))
+		viper.BindPFlag("region", cmd.Flags().Lookup("region"))
+		viper.BindPFlag("parallelism", cmd.Flags().Lookup("parallelism"))
 		cmd.MarkFlagRequired("directory")
 		cmd.MarkFlagRequired("org")
-
+		cmd.MarkFlagRequired("region")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 
@@ -53,20 +56,23 @@ var decryptCmd = &cobra.Command{
 	    _pubKey := encrypt.GetPubKey(sess, opts)
 	    _privKey := encrypt.GetPrivKey(sess, opts)
 
+	    os.MkdirAll(opts.Directory, os.ModePerm)
+
 	    // if downloading via manifest
 		if strings.HasSuffix(opts.File, "manifest.json") {
 
 		    log.Info("Detected manifest file...")
+
 		    target_manifest_path := filepath.Join(opts.Directory, filepath.Base(opts.File))
 			fn, err := aws_helpers.DownloadFile(sess, opts.Bucket, opts.Org, opts.File, target_manifest_path)
-			utils.LogIfError("Unable to download file - ", err)
+			utils.PanicIfError("Unable to download file - ", err)
 
 			m := manifest.ReadManifest(fn)
 			batch_folder := m.Folder
 			file_structs := m.Files
 
             var wg sync.WaitGroup
-            sem := make(chan int, 12)
+            sem := make(chan int, opts.Parallelism)
 
             for _, fs := range file_structs {
                 wg.Add(1)
@@ -102,28 +108,13 @@ func decryptFile(sess *session.Session, _pubkey *packet.PublicKey, _privkey *pac
 	nested_dir := filepath.Dir(target_path)
 	os.MkdirAll(nested_dir, os.ModePerm)
 
-	fn, err := aws_helpers.DownloadFile(sess, opts.Bucket, opts.Org, aws_key, target_path)
-	utils.LogIfError("Unable to download file - ", err)
-
-	stat, _ := os.Stat(fn)
-
-	log.Debugf("Stat of file: %v", stat.Size())
-	downloadTime := utils.Timing(start, "\tDownload time (sec): %f")
-
-	encryptTime := time.Now()
+	_, err := aws_helpers.DownloadFile(sess, opts.Bucket, opts.Org, aws_key, target_path)
+	utils.PanicIfError("Unable to download file - ", err)
 
     encrypt.DecryptFile(_pubkey, _privkey, target_path, fn_zip, opts)
-    encryptTime = utils.Timing(downloadTime, "\tDecrypt time (sec): %f")
+	zip.UnZipFile(fn_zip, fn_decrypt, opts.Directory)
 
-	log.Debugf("\tDecompressing file: %s", fn)
-	fn = zip.UnZipFile(fn_zip, fn_decrypt, opts.Directory)
-
-	utils.Timing(encryptTime, "\tDecompress time (sec): %f")
-	utils.Timing(start, "Total time: %f")
-
-	// cleanup regardless of the upload succeeding or not, we will retry outside of this function
-    //     utils.CleanupFile(fn_zip)
-    // 	utils.CleanupFile(target_path)
+    utils.Timing(start, fmt.Sprintf("\tProcessed file '%s' in ", fs.Name) + "%f seconds")
 
 	return err
 }
@@ -140,11 +131,11 @@ func buildDecryptOptions() options.Options {
 
 	region := viper.GetString("region")
 	awsProfile := viper.GetString("awsprofile")
-
 	privKey := viper.GetString("my-private-key")
 	pubKey := viper.GetString("my-public-key")
 	ssmPrivKey := viper.GetString("ssm-private-key")
 	ssmPubKey := viper.GetString("ssm-public-key")
+	parallelism := viper.GetInt("parallelism")
 
 	options := options.Options{
 		Bucket:      bucket,
@@ -157,6 +148,7 @@ func buildDecryptOptions() options.Options {
 		SSMPrivKey:  ssmPrivKey,
 		SSMPubKey:   ssmPubKey,
 		AwsProfile:  awsProfile,
+		Parallelism: parallelism,
 	}
 
 	debug := viper.GetBool("debug")
@@ -171,7 +163,7 @@ func buildDecryptOptions() options.Options {
 
 func checkDecryptOptions(options options.Options) {
 	if options.File == "" {
-		log.Warn("Need to supply a file to decrypt.  Should be the file path within the dbucket but not including the dbucket.")
+		log.Warn("Need to supply a file to decrypt. Should be the file path within the bucket but not including the bucket.")
 		log.Panic("Insufficient information to perform decryption.")
 	} else if options.Bucket == "" {
 		log.Warn("Need to supply a bucket.")
@@ -181,6 +173,12 @@ func checkDecryptOptions(options options.Options) {
 		log.Panic("Insufficient information to perform decryption.")
 	} else if options.Region == "" {
 		log.Warn("Need to supply a region for the S3 bucket.")
+		log.Panic("Insufficient information to perform decryption.")
+	} else if options.PubKey == "" && options.SSMPubKey == "" {
+	    log.Warn("Need to supply a public encryption key parameter.")
+		log.Panic("Insufficient information to perform decryption.")
+	} else if options.PrivKey == "" && options.SSMPrivKey == "" {
+	    log.Warn("Need to supply a private encryption key parameter.")
 		log.Panic("Insufficient information to perform decryption.")
 	}
 }
@@ -194,6 +192,10 @@ func init() {
 	decryptCmd.MarkFlagRequired("directory")
 	decryptCmd.PersistentFlags().String("org", "", "The destination directory to decrypt and unzip.")
 	decryptCmd.MarkFlagRequired("org")
+	decryptCmd.PersistentFlags().String("region", "", "The AWS region of the target bucket.")
+	decryptCmd.MarkFlagRequired("region")
+
+	decryptCmd.PersistentFlags().Int("parallelism", 10, "The maximum number of files to download and decrypt at a time.")
 
 	decryptCmd.PersistentFlags().String("awsprofile", "", "AWS profile to use when establishing sessions with AWS's SDK.")
 	decryptCmd.PersistentFlags().String("my-private-key", "", "The receiver's private key.  A local file path.")
@@ -204,6 +206,7 @@ func init() {
 	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
 	viper.BindPFlag("directory", decryptCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", decryptCmd.PersistentFlags().Lookup("org"))
+	viper.BindPFlag("parallelism", decryptCmd.PersistentFlags().Lookup("parallelism"))
 	viper.BindPFlag("awsprofile", decryptCmd.PersistentFlags().Lookup("awsprofile"))
 	viper.BindPFlag("my-private-key", decryptCmd.PersistentFlags().Lookup("my-private-key"))
 	viper.BindPFlag("my-public-key", decryptCmd.PersistentFlags().Lookup("my-public-key"))
