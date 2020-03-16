@@ -54,12 +54,15 @@ func setUpEnv() (string, string) {
 func TestZipFileCreation(t * testing.T) {
     assert := assert.New(t)
 
+    os.RemoveAll("s3s2_test_zip_file_creation")
+    os.Mkdir("s3s2_test_zip_file_creation", os.ModePerm)
+
     input_file_path, output_file_path := setUpEnv()
 
     writeToFile(input_file_path, "This is test data")
     assert.True(fileExists(input_file_path))
 
-    zip.ZipFile(input_file_path, output_file_path, "")
+    zip.ZipFile(input_file_path, output_file_path, "s3s2_new")
     assert.True(fileExists(output_file_path))
 }
 
@@ -74,13 +77,7 @@ func TestUnZipFileCreation(t * testing.T) {
     assert.False(fileExists(input_file_path))
 
     zip.UnZipFile(output_file_path, input_file_path, "")
-    assert.True(fileExists(output_file_path))
-}
+    assert.True(fileExists(input_file_path))
 
-func TestZipFile(t *testing.T) {
     os.RemoveAll("s3s2_test_zip_file_creation")
-    os.MkdirAll("s3s2_test_zip_file_creation", os.ModePerm)
-
-    TestZipFileCreation(t)
-    TestUnZipFileCreation(t)
 }
