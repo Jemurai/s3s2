@@ -39,7 +39,6 @@ var decryptCmd = &cobra.Command{
 	// placing these in the prerun is the workaround
 	PreRun: func(cmd *cobra.Command, args []string) {
 		viper.BindPFlag("directory", cmd.Flags().Lookup("directory"))
-		viper.BindPFlag("org", cmd.Flags().Lookup("org"))
 		viper.BindPFlag("region", cmd.Flags().Lookup("region"))
 		viper.BindPFlag("parallelism", cmd.Flags().Lookup("parallelism"))
 		cmd.MarkFlagRequired("directory")
