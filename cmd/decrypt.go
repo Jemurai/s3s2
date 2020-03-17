@@ -43,7 +43,6 @@ var decryptCmd = &cobra.Command{
 		viper.BindPFlag("region", cmd.Flags().Lookup("region"))
 		viper.BindPFlag("parallelism", cmd.Flags().Lookup("parallelism"))
 		cmd.MarkFlagRequired("directory")
-		cmd.MarkFlagRequired("org")
 		cmd.MarkFlagRequired("region")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
