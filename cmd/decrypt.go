@@ -107,7 +107,7 @@ func decryptFile(sess *session.Session, _pubkey *packet.PublicKey, _privkey *pac
 	nested_dir := filepath.Dir(target_path)
 	os.MkdirAll(nested_dir, os.ModePerm)
 
-	_, err := aws_helpers.DownloadFile(sess, opts.Bucket, opts.Org, aws_key, target_path)
+	_, err := aws_helpers.DownloadFile(sess, m.Organization, opts.Org, aws_key, target_path)
 	utils.PanicIfError("Unable to download file - ", err)
 
     encrypt.DecryptFile(_pubkey, _privkey, target_path, fn_zip, opts)
@@ -189,8 +189,6 @@ func init() {
 	decryptCmd.MarkFlagRequired("file")
 	decryptCmd.PersistentFlags().String("directory", "", "The destination directory to decrypt and unzip.")
 	decryptCmd.MarkFlagRequired("directory")
-	decryptCmd.PersistentFlags().String("org", "", "The destination directory to decrypt and unzip.")
-	decryptCmd.MarkFlagRequired("org")
 	decryptCmd.PersistentFlags().String("region", "", "The AWS region of the target bucket.")
 	decryptCmd.MarkFlagRequired("region")
 
@@ -204,7 +202,6 @@ func init() {
 
 	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
 	viper.BindPFlag("directory", decryptCmd.PersistentFlags().Lookup("directory"))
-	viper.BindPFlag("org", decryptCmd.PersistentFlags().Lookup("org"))
 	viper.BindPFlag("parallelism", decryptCmd.PersistentFlags().Lookup("parallelism"))
 	viper.BindPFlag("awsprofile", decryptCmd.PersistentFlags().Lookup("awsprofile"))
 	viper.BindPFlag("my-private-key", decryptCmd.PersistentFlags().Lookup("my-private-key"))
