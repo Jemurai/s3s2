@@ -107,7 +107,7 @@ func decryptFile(sess *session.Session, _pubkey *packet.PublicKey, _privkey *pac
 	nested_dir := filepath.Dir(target_path)
 	os.MkdirAll(nested_dir, os.ModePerm)
 
-	_, err := aws_helpers.DownloadFile(sess, m.Organization, opts.Org, aws_key, target_path)
+	_, err := aws_helpers.DownloadFile(sess, opts.Bucket, m.Organization, aws_key, target_path)
 	utils.PanicIfError("Unable to download file - ", err)
 
     encrypt.DecryptFile(_pubkey, _privkey, target_path, fn_zip, opts)
