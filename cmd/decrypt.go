@@ -78,10 +78,14 @@ var decryptCmd = &cobra.Command{
                     sem <- 1
                     defer func() { <-sem }()
                     defer wg.Done()
+                    // if block is for cases where AWS session expires, so we re-create session and attempt file again
                     if decryptFile(sess, _pubKey, _privKey, m, fs, opts) != nil {
                         sess = utils.GetAwsSession(opts)
                         err := decryptFile(sess, _pubKey, _privKey, m, fs, opts)
-                        panic(err)
+                        if err != nil {}
+                            log.Warn("Error during decrypt-file session expiration if block!")
+                            log.Errorf("Error: '%v'", err)
+                            panic(err)
                     }
                 }(&wg, sess, _pubKey, _privKey, batch_folder, fs, opts)
             }
