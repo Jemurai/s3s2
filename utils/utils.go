@@ -27,7 +27,8 @@ func Timing(start time.Time, message string) time.Time {
 func PanicIfError(msg string, err error) {
     if err != nil {
         log.Error(msg)
-        panic(msg)
+        log.Error(err)
+        panic(err)
     }
 }
 
