@@ -5,10 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/karrick/godirwalk"
 
 	session "github.com/aws/aws-sdk-go/aws/session"
 	options "github.com/tempuslabs/s3s2/options"
@@ -63,6 +61,21 @@ func GetRelativePath(path string, relative_to string) string {
         }
     }
 
+// https://gobyexample.com/collection-functions
+func index(vs []string, t string) int {
+    for i, v := range vs {
+        if v == t {
+            return i
+        }
+    }
+    return -1
+}
+
+// function to mimic Python's """>> if x in []"""
+func Include(vs []string, t string) bool {
+    return index(vs, t) >= 0
+}
+
 // Influence creation of AWS config
 func getAwsConfig(opts options.Options) aws.Config {
     conf := aws.Config{Region: aws.String(opts.Region)}
@@ -89,38 +102,4 @@ func GetAwsSession(opts options.Options) *session.Session {
     }
 
     return sess
-}
-
-func PerformArchive(input_dir string, archive_dir string) {
-
-    log.Infof("Archiving files from '%s' into '%s'...", input_dir, archive_dir)
-
-    err := godirwalk.Walk(input_dir, &godirwalk.Options{
-        Callback: func(osPathname string, de *godirwalk.Dirent) error {
-            var err error
-            if !strings.HasSuffix(filepath.Base(osPathname), "manifest.json") && !de.IsDir() {
-                rel, err := filepath.Rel(input_dir, osPathname)
-                PanicIfError(fmt.Sprintf("Unable to get relative path for '%s'", osPathname), err)
-
-                archive_full_path := filepath.Join(archive_dir, input_dir, rel)
-                archive_dir, archive_path := filepath.Split(archive_full_path)
-
-                os.MkdirAll(archive_dir, os.ModePerm)
-
-                err = os.Rename(osPathname, archive_full_path)
-                PanicIfError(fmt.Sprintf("Unable to move '%s' to '%s'", osPathname, archive_path), err)
-            }
-            return err
-        },
-        Unsorted: true, // (optional) set true for faster yet non-deterministic enumeration (see godoc)
-    })
-
-    // renaming all files out of a directory will remove the directory - so here we recreate
-
-    if err == nil {
-        os.RemoveAll(input_dir)
-        os.MkdirAll(input_dir, os.ModePerm)
-    }
-
-    log.Info("Archiving complete.")
 }

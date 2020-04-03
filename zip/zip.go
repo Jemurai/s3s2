@@ -16,6 +16,10 @@ func ZipFile(InputFn string, OutputFn string, directory string) string {
 
     log.Infof("Zipping file '%s' to '%s'", InputFn, OutputFn)
 
+    dir, _ := filepath.Split(OutputFn)
+
+    os.MkdirAll(dir, os.ModePerm)
+
 	newZipFile, err := os.Create(OutputFn)
 	utils.PanicIfError("Unable to create zip file - ", err)
 	defer newZipFile.Close()

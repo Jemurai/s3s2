@@ -3,17 +3,12 @@ package aws_helpers
 
 import (
 	"os"
-
+	"strings"
     "path/filepath"
 	log "github.com/sirupsen/logrus"
-
-	// local
-
 	session "github.com/aws/aws-sdk-go/aws/session"
 	options "github.com/tempuslabs/s3s2/options"
 	utils "github.com/tempuslabs/s3s2/utils"
-
-     // aws
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -54,6 +49,40 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
 		return err
 	}
 }
+
+// Dedicated function for uploading our lambda trigger file - our way of communicating that s3s2 is done
+func UploadLambdaTrigger(sess *session.Session, org string, folder string, opts options.Options) error {
+    uploader := s3manager.NewUploader(sess)
+
+    file_name := "._lambda_trigger"
+
+    final_key := utils.ToPosixPath(filepath.Clean(filepath.Join(org, folder, file_name)))
+    log.Debugf("Uploading file '%s' to aws key '%s'", file_name, final_key)
+
+	if opts.AwsKey != "" {
+		result, err := uploader.Upload(&s3manager.UploadInput{
+			Bucket:               aws.String(opts.Bucket),
+			Key:                  aws.String(final_key),
+			ServerSideEncryption: aws.String("aws:kms"),
+			SSEKMSKeyId:          aws.String(opts.AwsKey),
+			Body:                 strings.NewReader(""),
+		})
+		utils.PanicIfError("Failed to upload file: ", err)
+		log.Infof("File '%s' uploaded to: '%s'", file_name, result.Location)
+		return err
+
+	} else {
+		result, err := uploader.Upload(&s3manager.UploadInput{
+			Bucket: aws.String(opts.Bucket),
+			Key:    aws.String(final_key),
+			Body:   strings.NewReader(""),
+		})
+		utils.PanicIfError("Failed to upload file: ", err)
+		log.Infof("File '%s' uploaded to: '%s'", file_name, result.Location)
+		return err
+	}
+}
+
 
 // Download
 func DownloadFile(sess *session.Session, bucket string, org string, aws_key string, target_path string) (string, error) {
