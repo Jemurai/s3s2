@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 	"fmt"
+	"os"
 	"strings"
 	"path/filepath"
 
@@ -52,7 +53,6 @@ var shareCmd = &cobra.Command{
 
 		start := time.Now()
 		fnuuid := start.Format("20060102150405") // golang uses numeric constants for timestamp formatting
-		batch_folder := opts.Prefix + "_s3s2_" + fnuuid
 
 		file_structs, file_structs_metadata, err := file.GetFileStructsFromDir(opts.Directory, opts)
 		utils.PanicIfError("Error reading directory", err)
@@ -77,10 +77,14 @@ var shareCmd = &cobra.Command{
 
 		change_s3_folders_at_size := 100000
         current_s3_folder_size := 0
+        current_s3_batch := 0
 
+        var batch_folder string
 		var all_uploaded_files_so_far []file.File
 		var m manifest.Manifest
 		var wg sync.WaitGroup
+
+		batch_folder = fmt.Sprintf("%s_s3s2_%s_%d", opts.Prefix, fnuuid, current_s3_batch)
 
         // for each batch
 		for i_batch, batch := range file_struct_batches {
@@ -93,9 +97,12 @@ var shareCmd = &cobra.Command{
 
             // tie off this current s3 directory
 		    if current_s3_folder_size + len(batch) > change_s3_folders_at_size {
-		    	aws_helpers.UploadLambdaTrigger(sess, opts.Org, batch_folder, opts)
+		    	// aws_helpers.UploadLambdaTrigger(sess, opts.Org, batch_folder, opts)
 		        current_s3_folder_size = 0
+		        current_s3_batch += 1
 		        all_uploaded_files_so_far = []file.File{}
+		        batch_folder = fmt.Sprintf("%s_s3s2_%s_%d", opts.Prefix, fnuuid, current_s3_batch)
+
 		    }
 
             // for each file in batch
@@ -134,10 +141,14 @@ var shareCmd = &cobra.Command{
         // archive metafiles now
         if opts.ArchiveDirectory != "" {
             file.ArchiveFileStructs(file_structs_metadata, opts.Directory, opts.ArchiveDirectory)
+            utils.CleanupDirectory(opts.Directory)
         }
 
+        utils.CleanupDirectory(opts.Directory)
+        os.MkdirAll(opts.Directory, os.ModePerm)
+
 		utils.Timing(start, "Elapsed time: %f")
-		aws_helpers.UploadLambdaTrigger(sess, opts.Org, batch_folder, opts)
+		// aws_helpers.UploadLambdaTrigger(sess, opts.Org, batch_folder, opts)
 	},
 }
 
@@ -224,6 +235,10 @@ func checkShareOptions(options options.Options) {
 		log.Warn("Need to supply a destination for the files to decrypt.  Should be a local path.")
 		log.Panic("Insufficient information to perform decryption.")
 	}
+
+    if options.Directory == "/" {
+        log.Panic("Input directory cannot be root!")
+    }
 
 	if !strings.Contains(strings.ToLower(options.Prefix), "clinical") && !strings.Contains(strings.ToLower(options.Prefix), "documents") {
 	    log.Errorf("Input Prefix argument is '%s'", options.Prefix)

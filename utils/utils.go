@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
+	"io"
 	"github.com/aws/aws-sdk-go/aws"
 
 	session "github.com/aws/aws-sdk-go/aws/session"
@@ -37,6 +37,24 @@ func CleanupFile(fs string) error {
 	return err
 }
 
+func CleanupDirectory(directory string) error {
+    err := os.RemoveAll(directory)
+    return err
+}
+
+func IsDirEmpty(name string) (bool, error) {
+    f, err := os.Open(name)
+    if err != nil {
+        return false, err
+    }
+    defer f.Close()
+
+    _, err = f.Readdirnames(1) // Or f.Readdir(1)
+    if err == io.EOF {
+        return true, nil
+    }
+    return false, err // Either not empty or error, suits both cases
+}
 
 // Will remove duplicate os.seperators from input string
 // Will NOT convert forward slashes to back slashes
