@@ -133,7 +133,7 @@ func ArchiveFileStructs(file_structs_to_archive []File, input_dir string, archiv
         }
 
         dir, _ = filepath.Split(filepath.Join(input_dir, source_path))
-        is_dir_empty, err := utils.IsDirEmpty(dir)
+        is_dir_empty, _ := utils.IsDirEmpty(dir)
 
         if is_dir_empty {
             os.Remove(dir)
