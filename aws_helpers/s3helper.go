@@ -41,7 +41,10 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
                 // if this is a slow down or internal error, retry
                 if awsErr, ok := err.(awserr.Error); ok {
                     if awsErr.Code() == "500" || awsErr.Code() == "503" {
+                        log.Warningf("Received '%s' from AWS - waiting to retry...", awsErr.Code())
                         time.Sleep(15 * time.Second)
+                    } else {
+                        utils.PanicIfError("Failed to upload file: ", err)
                     }
                 // unhandled error
                 } else {
@@ -65,7 +68,11 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
                 // if this is a slow down or internal error, retry
                 if awsErr, ok := err.(awserr.Error); ok {
                     if awsErr.Code() == "500" || awsErr.Code() == "503" {
+                        log.Warningf("Received '%s' from AWS - waiting to retry...", awsErr.Code())
                         time.Sleep(15 * time.Second)
+                    // unhandled aws code
+                    } else {
+                    utils.PanicIfError("Failed to upload file: ", err)
                     }
                 // unhandled error
                 } else {

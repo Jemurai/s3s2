@@ -199,8 +199,6 @@ func EncryptFile(pubKey *packet.PublicKey, InputFn string, OutputFn string, Opts
 	log.Debugf("Encrypted file: '%s'", infile.Name())
 	compressed.Close()
 
-
-
 	return OutputFn
 }
 
