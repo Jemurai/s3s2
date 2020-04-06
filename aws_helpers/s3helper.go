@@ -3,9 +3,11 @@ package aws_helpers
 
 import (
 	"os"
+	"time"
 	"strings"
     "path/filepath"
 	log "github.com/sirupsen/logrus"
+	awserr "github.com/aws/aws-sdk-go/aws/awserr"
 	session "github.com/aws/aws-sdk-go/aws/session"
 	options "github.com/tempuslabs/s3s2/options"
 	utils "github.com/tempuslabs/s3s2/utils"
@@ -24,30 +26,59 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
     final_key := utils.ToPosixPath(filepath.Clean(filepath.Join(org, aws_key)))
     log.Debugf("Uploading file '%s' to aws key '%s'", local_path, final_key)
 
-	if opts.AwsKey != "" {
-		result, err := uploader.Upload(&s3manager.UploadInput{
-			Bucket:               aws.String(opts.Bucket),
-			Key:                  aws.String(final_key),
-			ServerSideEncryption: aws.String("aws:kms"),
-			SSEKMSKeyId:          aws.String(opts.AwsKey),
-			Body:                 file,
-		})
-		utils.PanicIfError("Failed to upload file: ", err)
-		log.Infof("File '%s' uploaded to: '%s'", file.Name(), result.Location)
-		file.Close()
-		return err
+    for {
 
-	} else {
-		result, err := uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(opts.Bucket),
-			Key:    aws.String(final_key),
-			Body:   file,
-		})
-		utils.PanicIfError("Failed to upload file: ", err)
-		log.Infof("File '%s' uploaded to: '%s'", file.Name(), result.Location)
-		file.Close()
-		return err
-	}
+        if opts.AwsKey != "" {
+            result, err := uploader.Upload(&s3manager.UploadInput{
+                Bucket:               aws.String(opts.Bucket),
+                Key:                  aws.String(final_key),
+                ServerSideEncryption: aws.String("aws:kms"),
+                SSEKMSKeyId:          aws.String(opts.AwsKey),
+                Body:                 file,
+            })
+
+            if err != nil {
+                // if this is a slow down or internal error, retry
+                if awsErr, ok := err.(awserr.Error); ok {
+                    if awsErr.Code() == "500" || awsErr.Code() == "503" {
+                        time.Sleep(15 * time.Second)
+                    }
+                // unhandled error
+                } else {
+                    utils.PanicIfError("Failed to upload file: ", err)
+                }
+            // function break
+            } else {
+                log.Infof("File '%s' uploaded to: '%s'", file.Name(), result.Location)
+                file.Close()
+                return err
+            }
+
+        } else {
+            result, err := uploader.Upload(&s3manager.UploadInput{
+                Bucket: aws.String(opts.Bucket),
+                Key:    aws.String(final_key),
+                Body:   file,
+            })
+
+            if err != nil {
+                // if this is a slow down or internal error, retry
+                if awsErr, ok := err.(awserr.Error); ok {
+                    if awsErr.Code() == "500" || awsErr.Code() == "503" {
+                        time.Sleep(15 * time.Second)
+                    }
+                // unhandled error
+                } else {
+                    utils.PanicIfError("Failed to upload file: ", err)
+                }
+            // function break
+            } else {
+                log.Infof("File '%s' uploaded to: '%s'", file.Name(), result.Location)
+                file.Close()
+                return err
+            }
+        }
+    }
 }
 
 // Dedicated function for uploading our lambda trigger file - our way of communicating that s3s2 is done

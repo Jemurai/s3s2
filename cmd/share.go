@@ -102,7 +102,6 @@ var shareCmd = &cobra.Command{
 		        current_s3_batch += 1
 		        all_uploaded_files_so_far = []file.File{}
 		        batch_folder = fmt.Sprintf("%s_s3s2_%s_%d", opts.Prefix, fnuuid, current_s3_batch)
-
 		    }
 
             // for each file in batch
@@ -114,6 +113,7 @@ var shareCmd = &cobra.Command{
                     err = processFile(sess, _pubKey, batch_folder, work_folder, fs, opts)
                 }(&wg, sess, _pubKey, batch_folder, fs, opts)
             }
+
             wg.Wait()
 
             current_s3_folder_size += len(batch)
@@ -131,7 +131,7 @@ var shareCmd = &cobra.Command{
 
             // archive the files we processed in this batch, dont archive metadata files until entire process is done
             if opts.ArchiveDirectory != "" && i_batch != 0 {
-                log.Info("Archiving files in batch '%d'", i_batch)
+                log.Infof("Archiving files in batch '%d'", i_batch)
                 file.ArchiveFileStructs(batch, opts.Directory, opts.ArchiveDirectory)
             }
 
@@ -172,10 +172,19 @@ func processFile(sess *session.Session, _pubkey *packet.PublicKey, aws_folder st
 	    utils.Timing(start, fmt.Sprintf("\tProcessed file '%s' in ", fs.Name) + "%f seconds")
 	}
 
-	// cleanup regardless of the upload succeeding or not, we will retry outside of this function
+	// remove the zipped and encrypted files
     utils.CleanupFile(fn_zip)
 	utils.CleanupFile(fn_encrypt)
 
+    // these file names are often /internal_dir/basename
+	if opts.ScratchDirectory != "" {
+        nested_dir_crypt, _ := filepath.Split(fn_encrypt)
+        source_dir_empty, _ := utils.IsDirEmpty(nested_dir_crypt)
+
+        if source_dir_empty == true {
+            os.Remove(nested_dir_crypt)
+        }
+    }
     return err
 }
 
