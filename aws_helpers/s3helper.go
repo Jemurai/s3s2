@@ -3,11 +3,9 @@ package aws_helpers
 
 import (
 	"os"
-	"time"
 	"strings"
     "path/filepath"
 	log "github.com/sirupsen/logrus"
-	awserr "github.com/aws/aws-sdk-go/aws/awserr"
 	session "github.com/aws/aws-sdk-go/aws/session"
 	options "github.com/tempuslabs/s3s2/options"
 	utils "github.com/tempuslabs/s3s2/utils"
@@ -38,19 +36,7 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
             })
 
             if err != nil {
-                // if this is a slow down or internal error, retry
-                if awsErr, ok := err.(awserr.Error); ok {
-                    if awsErr.Code() == "500" || awsErr.Code() == "503" {
-                        log.Warningf("Received '%s' from AWS - waiting to retry...", awsErr.Code())
-                        time.Sleep(15 * time.Second)
-                    } else {
-                        utils.PanicIfError("Failed to upload file: ", err)
-                    }
-                // unhandled error
-                } else {
-                    utils.PanicIfError("Failed to upload file: ", err)
-                }
-            // function break
+                utils.PanicIfError("Failed to upload file: ", err)
             } else {
                 log.Infof("File '%s' uploaded to: '%s'", file.Name(), result.Location)
                 file.Close()
@@ -65,20 +51,7 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
             })
 
             if err != nil {
-                // if this is a slow down or internal error, retry
-                if awsErr, ok := err.(awserr.Error); ok {
-                    if awsErr.Code() == "500" || awsErr.Code() == "503" {
-                        log.Warningf("Received '%s' from AWS - waiting to retry...", awsErr.Code())
-                        time.Sleep(15 * time.Second)
-                    // unhandled aws code
-                    } else {
-                    utils.PanicIfError("Failed to upload file: ", err)
-                    }
-                // unhandled error
-                } else {
-                    utils.PanicIfError("Failed to upload file: ", err)
-                }
-            // function break
+                utils.PanicIfError("Failed to upload file: ", err)
             } else {
                 log.Infof("File '%s' uploaded to: '%s'", file.Name(), result.Location)
                 file.Close()

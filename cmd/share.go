@@ -42,6 +42,7 @@ var shareCmd = &cobra.Command{
 		viper.BindPFlag("directory", cmd.Flags().Lookup("directory"))
 		viper.BindPFlag("region", cmd.Flags().Lookup("region"))
 		viper.BindPFlag("parallelism", cmd.Flags().Lookup("parallelism"))
+		viper.BindPFlag("aws-profile", cmd.Flags().Lookup("aws-profile"))
 		cmd.MarkFlagRequired("directory")
 		cmd.MarkFlagRequired("org")
 		cmd.MarkFlagRequired("region")
@@ -97,7 +98,11 @@ var shareCmd = &cobra.Command{
 
             // tie off this current s3 directory
 		    if current_s3_folder_size + len(batch) > change_s3_folders_at_size {
-		    	// aws_helpers.UploadLambdaTrigger(sess, opts.Org, batch_folder, opts)
+
+		        if opts.LambdaTrigger == true {
+		            aws_helpers.UploadLambdaTrigger(sess, opts.Org, batch_folder, opts)
+		        }
+
 		        current_s3_folder_size = 0
 		        current_s3_batch += 1
 		        all_uploaded_files_so_far = []file.File{}
@@ -148,8 +153,10 @@ var shareCmd = &cobra.Command{
         os.MkdirAll(opts.Directory, os.ModePerm)
 
 		utils.Timing(start, "Elapsed time: %f")
-		// aws_helpers.UploadLambdaTrigger(sess, opts.Org, batch_folder, opts)
-	},
+        if opts.LambdaTrigger == true {
+            aws_helpers.UploadLambdaTrigger(sess, opts.Org, batch_folder, opts)
+        }
+    },
 }
 
 func processFile(sess *session.Session, _pubkey *packet.PublicKey, aws_folder string, work_folder string, fs file.File, opts options.Options) error {
@@ -177,6 +184,7 @@ func processFile(sess *session.Session, _pubkey *packet.PublicKey, aws_folder st
 	utils.CleanupFile(fn_encrypt)
 
     // these file names are often /internal_dir/basename
+    // this line is a non-performant way for each file to be responsible for cleaning up the directory they were in
 	if opts.ScratchDirectory != "" {
         nested_dir_crypt, _ := filepath.Split(fn_encrypt)
         source_dir_empty, _ := utils.IsDirEmpty(nested_dir_crypt)
@@ -206,6 +214,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	parallelism := viper.GetInt("parallelism")
 	batchSize := viper.GetInt("batch-size")
 	metaDataFiles := strings.Split(viper.GetString("metadata-files"), ",")
+	lambdaTrigger := viper.GetBool("lambda-trigger")
 
 	options := options.Options{
 		Directory       : directory,
@@ -221,6 +230,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 		Parallelism     : parallelism,
 		BatchSize       : batchSize,
 		MetaDataFiles   : metaDataFiles,
+		LambdaTrigger   : lambdaTrigger,
 	}
 
 	debug := viper.GetBool("debug")
@@ -266,6 +276,7 @@ func init() {
 
 	shareCmd.PersistentFlags().Int("parallelism", 10, "The maximum number of files to download and decrypt at a time within a batch.")
 	shareCmd.PersistentFlags().Int("batch-size", 10000, "Files are uploaded and archived in batches of this size. Manifest files are updated and uploaded after each factor of batch-size.")
+	shareCmd.PersistentFlags().Bool("lambda-trigger", false, "Will send a trigger file to the S3 bucket upon both process completion (when all valid files in the input directory are uploaded) and each internal S3 bucket tie off.")
 
     shareCmd.PersistentFlags().String("scratch-directory", "", "If provided, serves as location where .zip & .gpg files are written to. Intended to be leveraged if location will have superior write/read performance. If not provided .zip and .gpg files are written to the original directory.")
     shareCmd.PersistentFlags().String("archive-directory", "", "If provided, contents of upload directory are moved here after each batch.")
@@ -280,6 +291,7 @@ func init() {
 	viper.BindPFlag("prefix", shareCmd.PersistentFlags().Lookup("prefix"))
 	viper.BindPFlag("parallelism", shareCmd.PersistentFlags().Lookup("parallelism"))
 	viper.BindPFlag("batch-size", shareCmd.PersistentFlags().Lookup("batch-size"))
+	viper.BindPFlag("lambda-trigger", shareCmd.PersistentFlags().Lookup("lambda-trigger"))
 	viper.BindPFlag("scratch-directory", shareCmd.PersistentFlags().Lookup("scratch-directory"))
 	viper.BindPFlag("archive-directory", shareCmd.PersistentFlags().Lookup("archive-directory"))
 	viper.BindPFlag("metadata-files", shareCmd.PersistentFlags().Lookup("metadata-files"))

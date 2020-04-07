@@ -10,6 +10,7 @@ import (
 
 	session "github.com/aws/aws-sdk-go/aws/session"
 	options "github.com/tempuslabs/s3s2/options"
+	client "github.com/aws/aws-sdk-go/aws/client"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -94,9 +95,18 @@ func Include(vs []string, t string) bool {
     return index(vs, t) >= 0
 }
 
+// Influence creation of the retry logic used by any aws-config-using tools
+func getRetryer() client.DefaultRetryer {
+    retryer := client.DefaultRetryer{NumMaxRetries:10}
+    return retryer
+}
+
 // Influence creation of AWS config
 func getAwsConfig(opts options.Options) aws.Config {
-    conf := aws.Config{Region: aws.String(opts.Region)}
+    conf := aws.Config{
+        Region: aws.String(opts.Region),
+        Retryer: getRetryer(),
+    }
     return conf
     }
 
@@ -106,6 +116,7 @@ func GetAwsSession(opts options.Options) *session.Session {
 
     // intended on share when ran on partner server using credential files
     if opts.AwsProfile != "" {
+        log.Infof("Using AWS Profile '%s'", opts.AwsProfile)
         sess = session.Must(session.NewSessionWithOptions(session.Options{
         Profile: opts.AwsProfile,
         Config: getAwsConfig(opts),
@@ -118,6 +129,5 @@ func GetAwsSession(opts options.Options) *session.Session {
         AssumeRoleDuration: 12 * time.Hour,
         }))
     }
-
     return sess
 }

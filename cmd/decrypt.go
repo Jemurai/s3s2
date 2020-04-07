@@ -41,6 +41,7 @@ var decryptCmd = &cobra.Command{
 		viper.BindPFlag("directory", cmd.Flags().Lookup("directory"))
 		viper.BindPFlag("region", cmd.Flags().Lookup("region"))
 		viper.BindPFlag("parallelism", cmd.Flags().Lookup("parallelism"))
+		viper.BindPFlag("aws-profile", cmd.Flags().Lookup("aws-profile"))
 		cmd.MarkFlagRequired("directory")
 		cmd.MarkFlagRequired("region")
 	},

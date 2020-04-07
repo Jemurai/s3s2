@@ -8,18 +8,19 @@ type Options struct {
 	AwsProfile  string `json:"awsprofile"`
 	Directory   string `json:"directory"`
 	Org         string `json:"org"`
-	Parallelism int `json:"parallelism"`
+	Parallelism int    `json:"parallelism"`
 
 	// Encrypt only
-	PubKey           string  `json:"pubkey"`
+	PubKey           string   `json:"pubkey"`
 	SSMPubKey        string   `json:"ssmpubkey"`
 	AwsKey           string   `json:"awskey"`
 	Prefix           string   `json:"prefix"`
 	Hash             bool     `json:"hash"`
 	ArchiveDirectory string   `json:"archive-directory"`
 	ScratchDirectory string   `json:"scratch-directory"`
-	MetaDataFiles    []string   `json:"metadata-files"`
+	MetaDataFiles    []string `json:"metadata-files"`
 	BatchSize        int      `json:"batchsize"`
+	LambdaTrigger    bool     `json:"lambda-trigger"`
 
 	// Decrypt only
 	File        string `json:"file"`
