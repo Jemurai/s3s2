@@ -224,7 +224,12 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	aws_profile := viper.GetString("aws-profile")
 	parallelism := viper.GetInt("parallelism")
 	batchSize := viper.GetInt("batch-size")
-	metaDataFiles := strings.Split(viper.GetString("metadata-files"), ",")
+
+	var metaDataFiles []string
+	if viper.GetString("metadata-files") != "" {
+	    metaDataFiles = strings.Split(viper.GetString("metadata-files"), ",")
+	    }
+
 	lambdaTrigger := viper.GetBool("lambda-trigger")
 
 	options := options.Options{
