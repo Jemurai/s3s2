@@ -76,7 +76,7 @@ var shareCmd = &cobra.Command{
 
 	    sem := make(chan int, opts.Parallelism)
 
-		change_s3_folders_at_size := 2000
+		change_s3_folders_at_size := 100000
         current_s3_folder_size := 0
         current_s3_batch := 0
 
