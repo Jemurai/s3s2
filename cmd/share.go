@@ -76,7 +76,7 @@ var shareCmd = &cobra.Command{
 
 	    sem := make(chan int, opts.Parallelism)
 
-		change_s3_folders_at_size := 100000
+		change_s3_folders_at_size := 2000
         current_s3_folder_size := 0
         current_s3_batch := 0
 
@@ -89,25 +89,36 @@ var shareCmd = &cobra.Command{
 
         // for each batch
 		for i_batch, batch := range file_struct_batches {
-		    wg.Add(len(batch))
 
 		    log.Infof("Processing batch '%d'...", i_batch)
 
 		    // refresh session every batch
 		    sess = utils.GetAwsSession(opts)
 
-            // tie off this current s3 directory
+            // tie off this current s3 directory allowing us to decrypt in batches of this size
+            // this is used to create digestable folders for decrypt
 		    if current_s3_folder_size + len(batch) > change_s3_folders_at_size {
 
+                // fire lambda for the batch we are tieing off
 		        if opts.LambdaTrigger == true {
 		            aws_helpers.UploadLambdaTrigger(sess, opts.Org, batch_folder, opts)
 		        }
 
+                // reset / increment variables
 		        current_s3_folder_size = 0
 		        current_s3_batch += 1
-		        all_uploaded_files_so_far = []file.File{}
 		        batch_folder = fmt.Sprintf("%s_s3s2_%s_%d", opts.Prefix, fnuuid, current_s3_batch)
-		    }
+
+                // ensure the new s3 folder also has the metadata files
+		        for _, mdf := range file_structs_metadata {
+		            processFile(sess, _pubKey, batch_folder, work_folder, mdf, opts)
+		        }
+
+		        all_uploaded_files_so_far = file_structs_metadata
+
+            }
+
+            wg.Add(len(batch))
 
             // for each file in batch
             for _, fs := range batch {

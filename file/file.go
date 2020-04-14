@@ -97,8 +97,9 @@ func GetFileStructsFromDir(directory string, opts options.Options) ([]File, []Fi
             Unsorted: false, // (optional) set true for faster yet non-deterministic enumeration (see godoc)
         })
     // if we expect metadata files and don't pick them up, there might be a typo
-    if len(opts.MetaDataFiles) == 0 && len(file_structs_metadata) > 0 {
+    if len(opts.MetaDataFiles) > 0 && len(file_structs_metadata) == 0 {
         err = errors.New("Metadata files specified but none identified in input directory. Check your spelling and that the files exist in the input directory")
+        panic(err)
     }
 
     log.Infof("Identified metadata-files '%s'...", file_structs_metadata)
