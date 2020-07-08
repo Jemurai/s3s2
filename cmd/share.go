@@ -28,6 +28,7 @@ import (
 
 )
 
+
 // shareCmd represents the share command
 var shareCmd = &cobra.Command{
 	Use:   "share",
@@ -76,7 +77,7 @@ var shareCmd = &cobra.Command{
 
 	    sem := make(chan int, opts.Parallelism)
 
-		change_s3_folders_at_size := 100000
+		change_s3_folders_at_size := 100000 + len(file_structs_metadata)
         current_s3_folder_size := 0
         current_s3_batch := 0
 
@@ -112,6 +113,7 @@ var shareCmd = &cobra.Command{
                 // ensure the new s3 folder also has the metadata files
 		        for _, mdf := range file_structs_metadata {
 		            processFile(sess, _pubKey, batch_folder, work_folder, mdf, opts)
+		            current_s3_folder_size += 1
 		        }
 
 		        all_uploaded_files_so_far = file_structs_metadata
@@ -126,7 +128,7 @@ var shareCmd = &cobra.Command{
                     sem <- 1
                     defer func() { <-sem }()
                     defer wg.Done()
-                    err = processFile(sess, _pubKey, batch_folder, work_folder, fs, opts)
+                    processFile(sess, _pubKey, batch_folder, work_folder, fs, opts)
                 }(&wg, sess, _pubKey, batch_folder, fs, opts)
             }
 
@@ -157,11 +159,9 @@ var shareCmd = &cobra.Command{
         // archive metafiles now
         if opts.ArchiveDirectory != "" {
             file.ArchiveFileStructs(file_structs_metadata, opts.Directory, opts.ArchiveDirectory)
-            utils.CleanupDirectory(opts.Directory)
         }
 
-        utils.CleanupDirectory(opts.Directory)
-        os.MkdirAll(opts.Directory, os.ModePerm)
+        // utils.RemoveContents(opts.Directory)
 
 		utils.Timing(start, "Elapsed time: %f")
         if opts.LambdaTrigger == true {
@@ -170,25 +170,25 @@ var shareCmd = &cobra.Command{
     },
 }
 
-func processFile(sess *session.Session, _pubkey *packet.PublicKey, aws_folder string, work_folder string, fs file.File, opts options.Options) error {
+func processFile(sess *session.Session, _pubkey *packet.PublicKey, aws_folder string, work_folder string, fs file.File, opts options.Options) {
 	log.Debugf("Processing file '%s'", fs.Name)
-	start := time.Now()
+	// start := time.Now()
 
 	fn_source := fs.GetSourceName(opts.Directory)
 	fn_zip := fs.GetZipName(work_folder)
 	fn_encrypt := fs.GetEncryptedName(work_folder)
-	fn_aws_key := fs.GetEncryptedName(aws_folder)
+	// fn_aws_key := fs.GetEncryptedName(aws_folder)
 
 	zip.ZipFile(fn_source, fn_zip, work_folder)
 	encrypt.EncryptFile(_pubkey, fn_zip, fn_encrypt, opts)
 
-	err := aws_helpers.UploadFile(sess, opts.Org, fn_aws_key, fn_encrypt, opts)
-
-	if err != nil {
-	    log.Error("Error uploading file - ", err)
-	} else {
-	    utils.Timing(start, fmt.Sprintf("\tProcessed file '%s' in ", fs.Name) + "%f seconds")
-	}
+// 	err := aws_helpers.UploadFile(sess, opts.Org, fn_aws_key, fn_encrypt, opts)
+//
+// 	if err != nil {
+// 	    log.Error("Error uploading file - ", err)
+// 	} else {
+// 	    utils.Timing(start, fmt.Sprintf("\tProcessed file '%s' in ", fs.Name) + "%f seconds")
+// 	}
 
 	// remove the zipped and encrypted files
     utils.CleanupFile(fn_zip)
@@ -204,7 +204,7 @@ func processFile(sess *session.Session, _pubkey *packet.PublicKey, aws_folder st
             os.Remove(nested_dir_crypt)
         }
     }
-    return err
+
 }
 
 
@@ -253,32 +253,33 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	if debug != true {
 		log.SetLevel(log.InfoLevel)
 	}
-	log.Debug("Captured options: ")
-	log.Debug(options)
+	log.Debugf("Captured options: %s", options)
 
 	return options
 }
-
+// Any assertions that need to be made regarding input arguments
 func checkShareOptions(options options.Options) {
 	if options.AwsKey == "" && options.PubKey == "" {
-		log.Warn("Need to supply either AWS Key for S3 level encryption or a public key for GPG encryption or both!")
-		log.Panic("Insufficient key material to perform safe encryption.")
-	} else if options.Bucket == "" {
-		log.Warn("Need to supply a bucket.")
-		log.Panic("Insufficient information to perform decryption.")
-	} else if options.Directory == "" {
-		log.Warn("Need to supply a destination for the files to decrypt.  Should be a local path.")
-		log.Panic("Insufficient information to perform decryption.")
+		panic("Need to supply either AWS Key for S3 level encryption or a public key for GPG encryption or both!. Insufficient key material to perform safe encryption.")
+	}
+
+	if options.Bucket == "" {
+		panic("A bucket must be provided.")
+	}
+
+	if options.Directory == "" {
+		panic("Need to supply a destination for the files to decrypt.  Should be a local path.")
 	}
 
     if options.Directory == "/" {
-        log.Panic("Input directory cannot be root!")
+        panic("Input directory cannot be root!")
     }
 
 	if !strings.Contains(strings.ToLower(options.Prefix), "clinical") && !strings.Contains(strings.ToLower(options.Prefix), "documents") {
-	    log.Errorf("Input Prefix argument is '%s'", options.Prefix)
 	    panic("Prefix command line argument must contain 'clinical' or 'documents' to abide by our lambda trigger!")
 	}
+
+
 }
 
 func init() {

@@ -35,6 +35,7 @@ func (f *File) GetEncryptedName(directory string) string {
     return filepath.Join(directory, f.Name + ".zip.gpg")
 }
 
+// Break an array of objects into an array of chunks of n size
 func ChunkArray(in_array []File, chunk_size int) [][]File {
 
    var chunks [][]File
@@ -50,7 +51,7 @@ func ChunkArray(in_array []File, chunk_size int) [][]File {
     return chunks
 }
 
-// function housing the logic to determine what files are instantiated and eventually processed
+// function housing the logic to determine what files are instantiated and eventually processed.
 // for example used to ignore private files that may be filesystem-specific (i.e. .nfs files)
 // or encrypted and zipped files from a previous run
 func includeFile(de *godirwalk.Dirent, basename string, opts options.Options) bool {
@@ -70,7 +71,6 @@ func includeFile(de *godirwalk.Dirent, basename string, opts options.Options) bo
 
 // Traverse input directory and instantiate File structs
 // Will split metadata from other file structs
-
 func GetFileStructsFromDir(directory string, opts options.Options) ([]File, []File, error) {
 	var file_structs_metadata []File
 	var file_structs []File
@@ -142,3 +142,4 @@ func ArchiveFileStructs(file_structs_to_archive []File, input_dir string, archiv
     }
     return err
 }
+

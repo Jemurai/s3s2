@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 	"io"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 
 	session "github.com/aws/aws-sdk-go/aws/session"
@@ -25,9 +26,7 @@ func Timing(start time.Time, message string) time.Time {
 // Helper function to log an error if exists
 func PanicIfError(msg string, err error) {
     if err != nil {
-        log.Error(msg)
-        log.Error(err)
-        panic(err)
+        panic(fmt.Sprintf("message - %s error - %e\n", msg, err))
     }
 }
 
@@ -38,9 +37,25 @@ func CleanupFile(fs string) error {
 	return err
 }
 
-func CleanupDirectory(directory string) error {
-    err := os.RemoveAll(directory)
-    return err
+// Delete all files within an input directory - we choose this over removing and recreating the directory because
+// we want to retain the original file permissions
+func RemoveContents(dir string) error {
+    d, err := os.Open(dir)
+    if err != nil {
+        return err
+    }
+    defer d.Close()
+    names, err := d.Readdirnames(-1)
+    if err != nil {
+        return err
+    }
+    for _, name := range names {
+        err = os.RemoveAll(filepath.Join(dir, name))
+        if err != nil {
+            return err
+        }
+    }
+    return nil
 }
 
 func IsDirEmpty(name string) (bool, error) {
