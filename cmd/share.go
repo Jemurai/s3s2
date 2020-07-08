@@ -161,7 +161,7 @@ var shareCmd = &cobra.Command{
             file.ArchiveFileStructs(file_structs_metadata, opts.Directory, opts.ArchiveDirectory)
         }
 
-        // utils.RemoveContents(opts.Directory)
+        utils.RemoveContents(opts.Directory)
 
 		utils.Timing(start, "Elapsed time: %f")
         if opts.LambdaTrigger == true {
@@ -172,23 +172,23 @@ var shareCmd = &cobra.Command{
 
 func processFile(sess *session.Session, _pubkey *packet.PublicKey, aws_folder string, work_folder string, fs file.File, opts options.Options) {
 	log.Debugf("Processing file '%s'", fs.Name)
-	// start := time.Now()
+	start := time.Now()
 
 	fn_source := fs.GetSourceName(opts.Directory)
 	fn_zip := fs.GetZipName(work_folder)
 	fn_encrypt := fs.GetEncryptedName(work_folder)
-	// fn_aws_key := fs.GetEncryptedName(aws_folder)
+	fn_aws_key := fs.GetEncryptedName(aws_folder)
 
 	zip.ZipFile(fn_source, fn_zip, work_folder)
 	encrypt.EncryptFile(_pubkey, fn_zip, fn_encrypt, opts)
 
-// 	err := aws_helpers.UploadFile(sess, opts.Org, fn_aws_key, fn_encrypt, opts)
-//
-// 	if err != nil {
-// 	    log.Error("Error uploading file - ", err)
-// 	} else {
-// 	    utils.Timing(start, fmt.Sprintf("\tProcessed file '%s' in ", fs.Name) + "%f seconds")
-// 	}
+	err := aws_helpers.UploadFile(sess, opts.Org, fn_aws_key, fn_encrypt, opts)
+
+	if err != nil {
+	    utils.PanicIfError("Error uploading file - ", err)
+	} else {
+	    utils.Timing(start, fmt.Sprintf("\tProcessed file '%s' in ", fs.Name) + "%f seconds")
+	}
 
 	// remove the zipped and encrypted files
     utils.CleanupFile(fn_zip)
