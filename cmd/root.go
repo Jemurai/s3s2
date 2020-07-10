@@ -46,6 +46,7 @@ func Execute() {
 }
 
 func init() {
+    log.Debug("Initializing root configurations...")
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.s3s2.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "debug mode")
@@ -60,17 +61,22 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+
+    log.Debug("Setting log level...")
 	if debug {
 		log.SetLevel(log.DebugLevel)
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
 
+    log.Debug("Determining config source...")
 	if cfgFile != "" {
 		// Use config file from the flag.
+		log.Debug("Setting config file...")
 		viper.SetConfigFile(cfgFile)
 	} else {
 		// Find home directory.
+		log.Debug("Locating .s3s2 config file...")
 		home, err := homedir.Dir()
 		if err != nil {
 			log.Error(err)
@@ -82,6 +88,7 @@ func initConfig() {
 		viper.SetConfigName(".s3s2")
 	}
 
+    log.Debug("Reading environment variables...")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.

@@ -6,6 +6,7 @@ log "github.com/sirupsen/logrus"
 )
 
 func main() {
-    log.Debug("Executing S3S2...")
+    log.Info("Executing S3S2...")
 	cmd.Execute()
+	log.Info("Completed S3S2.")
 }

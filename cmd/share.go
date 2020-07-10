@@ -25,7 +25,6 @@ import (
 	aws_helpers "github.com/tempuslabs/s3s2/aws_helpers"
 	file "github.com/tempuslabs/s3s2/file"
 	utils "github.com/tempuslabs/s3s2/utils"
-
 )
 
 
@@ -259,6 +258,8 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 }
 // Any assertions that need to be made regarding input arguments
 func checkShareOptions(options options.Options) {
+    log.Debug("Checking input arguments...")
+
 	if options.AwsKey == "" && options.PubKey == "" {
 		panic("Need to supply either AWS Key for S3 level encryption or a public key for GPG encryption or both!. Insufficient key material to perform safe encryption.")
 	}
@@ -278,11 +279,11 @@ func checkShareOptions(options options.Options) {
 	if !strings.Contains(strings.ToLower(options.Prefix), "clinical") && !strings.Contains(strings.ToLower(options.Prefix), "documents") {
 	    panic("Prefix command line argument must contain 'clinical' or 'documents' to abide by our lambda trigger!")
 	}
-
-
 }
 
 func init() {
+    log.Debug("Initializing share command...")
+
 	rootCmd.AddCommand(shareCmd)
 
 	shareCmd.PersistentFlags().String("directory", "", "The directory to zip, encrypt and share.")
