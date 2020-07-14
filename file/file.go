@@ -77,6 +77,7 @@ func GetFileStructsFromDir(directory string, opts options.Options) ([]File, []Fi
 
 	err := godirwalk.Walk(directory, &godirwalk.Options{
 	        Callback: func(file_path string, de *godirwalk.Dirent) error {
+	            log.Debugf("Walking: '%s'", file_path)
 	            basename := filepath.Base(file_path)
                 if includeFile(de, basename, opts) {
                     log.Debugf("Registering '%s' to manifest", file_path)
@@ -94,6 +95,9 @@ func GetFileStructsFromDir(directory string, opts options.Options) ([]File, []Fi
                 }
                 return nil
                 },
+            ErrorCallback: func(osPathname string, err error) godirwalk.ErrorAction {
+           	// Your program may want to log the error somehow.
+           	log.Errorf(os.Stderr, "Error walking input directory: %s\n", err),
             Unsorted: false, // (optional) set true for faster yet non-deterministic enumeration (see godoc)
         })
     // if we expect metadata files and don't pick them up, there might be a typo
