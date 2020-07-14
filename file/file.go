@@ -7,7 +7,6 @@ import (
     "fmt"
     "path/filepath"
 
-    godirwalk "github.com/karrick/godirwalk"
     log "github.com/sirupsen/logrus"
 
     options "github.com/tempuslabs/s3s2/options"
@@ -54,9 +53,9 @@ func ChunkArray(in_array []File, chunk_size int) [][]File {
 // function housing the logic to determine what files are instantiated and eventually processed.
 // for example used to ignore private files that may be filesystem-specific (i.e. .nfs files)
 // or encrypted and zipped files from a previous run
-func includeFile(de *godirwalk.Dirent, basename string, opts options.Options) bool {
+func includeFile(info os.FileInfo, basename string, opts options.Options) bool {
 
-    not_dir := !de.IsDir()
+    not_dir := !info.IsDir()
     not_manifest := !strings.HasSuffix(basename, "manifest.json")
     not_private := !strings.HasPrefix(basename, ".")
     not_zip := !strings.HasSuffix(basename, ".zip")
@@ -69,20 +68,22 @@ func includeFile(de *godirwalk.Dirent, basename string, opts options.Options) bo
     }
 }
 
-// Traverse input directory and instantiate File structs
-// Will split metadata from other file structs
+
+
+
 func GetFileStructsFromDir(directory string, opts options.Options) ([]File, []File, error) {
-	var file_structs_metadata []File
+    var file_structs_metadata []File
 	var file_structs []File
 
-	err := godirwalk.Walk(directory, &godirwalk.Options{
-	        Callback: func(file_path string, de *godirwalk.Dirent) error {
-	            log.Debugf("Walking: '%s'", file_path)
+    err := filepath.Walk(directory, func(file_path string, info os.FileInfo, err error) error {
+                log.Debugf("Walking: '%s'", file_path)
 	            basename := filepath.Base(file_path)
-                if includeFile(de, basename, opts) {
+
+	            if includeFile(info, basename, opts) {
                     log.Debugf("Registering '%s' to manifest", file_path)
                     file_path, err := filepath.Rel(opts.Directory, file_path)
                     utils.PanicIfError("Unable to discern relative path - ", err)
+
                     // if current file is a metadata file, append to dedicated metadata chunk
                     if utils.Include(opts.MetaDataFiles, basename) {
                     	file_structs_metadata = append(file_structs_metadata, File{Name: file_path})
@@ -94,14 +95,8 @@ func GetFileStructsFromDir(directory string, opts options.Options) ([]File, []Fi
                     log.Debugf("Skipping over file '%s' - this file will NOT be encrypted...", file_path)
                 }
                 return nil
-                },
-            ErrorCallback: func(osPathname string, err error) godirwalk.ErrorAction {
-           	// Your program may want to log the error somehow.
-           	utils.PanicIfError(fmt.Sprintf("Error walking input directory: %s\n", osPathname), err)
-           	return godirwalk.Halt
-           	},
-            Unsorted: true, // (optional) set true for faster yet non-deterministic enumeration (see godoc)
-        })
+    })
+
     // if we expect metadata files and don't pick them up, there might be a typo
     if len(opts.MetaDataFiles) > 0 && len(file_structs_metadata) == 0 {
         err = errors.New("Metadata files specified but none identified in input directory. Check your spelling and that the files exist in the input directory")
@@ -111,8 +106,8 @@ func GetFileStructsFromDir(directory string, opts options.Options) ([]File, []Fi
     log.Infof("Identified metadata-files '%s'...", file_structs_metadata)
 
     return file_structs, file_structs_metadata, err
-}
 
+}
 
 func ArchiveFileStructs(file_structs_to_archive []File, input_dir string, archive_dir string) error {
 
