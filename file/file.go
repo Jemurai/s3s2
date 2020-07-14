@@ -100,7 +100,7 @@ func GetFileStructsFromDir(directory string, opts options.Options) ([]File, []Fi
            	utils.PanicIfError(fmt.Sprintf("Error walking input directory: %s\n", osPathname), err)
            	return godirwalk.Halt
            	},
-            Unsorted: false, // (optional) set true for faster yet non-deterministic enumeration (see godoc)
+            Unsorted: true, // (optional) set true for faster yet non-deterministic enumeration (see godoc)
         })
     // if we expect metadata files and don't pick them up, there might be a typo
     if len(opts.MetaDataFiles) > 0 && len(file_structs_metadata) == 0 {
