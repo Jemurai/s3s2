@@ -98,6 +98,7 @@ func GetFileStructsFromDir(directory string, opts options.Options) ([]File, []Fi
             ErrorCallback: func(osPathname string, err error) godirwalk.ErrorAction {
            	// Your program may want to log the error somehow.
            	log.Errorf(os.Stderr, "Error walking input directory: %s\n", err)
+           	return godirwalk.Halt
            	},
             Unsorted: false, // (optional) set true for faster yet non-deterministic enumeration (see godoc)
         })
