@@ -26,7 +26,7 @@ func Timing(start time.Time, message string) time.Time {
 // Helper function to log an error if exists
 func PanicIfError(msg string, err error) {
     if err != nil {
-        panic(fmt.Sprintf("message - %s error - %e\n", msg, err))
+        panic(fmt.Sprintf("message - %s error - %s\n", msg, err))
     }
 }
 
