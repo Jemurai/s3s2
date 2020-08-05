@@ -69,6 +69,8 @@ func initConfig() {
 		log.SetLevel(log.InfoLevel)
 	}
 
+	log.SetFormatter(&log.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
+
     log.Debug("Determining config source...")
 	if cfgFile != "" {
 		// Use config file from the flag.

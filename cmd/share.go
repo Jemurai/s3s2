@@ -66,7 +66,7 @@ var shareCmd = &cobra.Command{
 
 	    var work_folder string
         if opts.ScratchDirectory != "" {
-            work_folder = opts.ScratchDirectory
+            work_folder = filepath.Join(opts.ScratchDirectory, opts.Org)
         } else {
             work_folder = opts.Directory
         }
@@ -161,6 +161,10 @@ var shareCmd = &cobra.Command{
         }
 
         utils.RemoveContents(opts.Directory)
+
+        if opts.ScratchDirectory != "" {
+            os.Remove(work_folder)
+        }
 
 		utils.Timing(start, "Elapsed time: %f")
         if opts.LambdaTrigger == true {
@@ -294,9 +298,9 @@ func init() {
 
 	shareCmd.PersistentFlags().Int("parallelism", 10, "The maximum number of files to download and decrypt at a time within a batch.")
 	shareCmd.PersistentFlags().Int("batch-size", 10000, "Files are uploaded and archived in batches of this size. Manifest files are updated and uploaded after each factor of batch-size.")
-	shareCmd.PersistentFlags().Bool("lambda-trigger", false, "Will send a trigger file to the S3 bucket upon both process completion (when all valid files in the input directory are uploaded) and each internal S3 bucket tie off.")
+	shareCmd.PersistentFlags().Bool("lambda-trigger", true, "Will send a trigger file to the S3 bucket upon both process completion (when all valid files in the input directory are uploaded) and each internal S3 bucket tie off.")
 
-    shareCmd.PersistentFlags().String("scratch-directory", "", "If provided, serves as location where .zip & .gpg files are written to. Intended to be leveraged if location will have superior write/read performance. If not provided .zip and .gpg files are written to the original directory.")
+    shareCmd.PersistentFlags().String("scratch-directory", "", "If provided, serves as location where .zip & .gpg files are written to. Is automatically suffixed by org argument. Intended to be leveraged if location will have superior write/read performance. If not provided, .zip and .gpg files are written to the original directory.")
     shareCmd.PersistentFlags().String("archive-directory", "", "If provided, contents of upload directory are moved here after each batch.")
     shareCmd.PersistentFlags().String("metadata-files", "", "If provided, these files are the first to be uploaded and the last to be archived out of the input directory. Comma-separated. I.E. --metadata-files=file1,file2,file3")
 
