@@ -268,6 +268,10 @@ func checkShareOptions(options options.Options) {
 		panic("Need to supply either AWS Key for S3 level encryption or a public key for GPG encryption or both!. Insufficient key material to perform safe encryption.")
 	}
 
+	if options.Org == "" {
+	    panic("A Org must be provided.")
+	}
+
 	if options.Bucket == "" {
 		panic("A bucket must be provided.")
 	}
