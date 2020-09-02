@@ -43,6 +43,7 @@ var shareCmd = &cobra.Command{
 		viper.BindPFlag("region", cmd.Flags().Lookup("region"))
 		viper.BindPFlag("parallelism", cmd.Flags().Lookup("parallelism"))
 		viper.BindPFlag("aws-profile", cmd.Flags().Lookup("aws-profile"))
+		viper.BindPFlag("ssm-public-key", cmd.Flags().Lookup("ssm-public-key"))
 		cmd.MarkFlagRequired("directory")
 		cmd.MarkFlagRequired("org")
 		cmd.MarkFlagRequired("region")
@@ -221,7 +222,10 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	region := viper.GetString("region")
 	org := viper.GetString("org")
 	prefix := viper.GetString("prefix")
+
 	pubKey := filepath.Clean(viper.GetString("receiver-public-key"))
+	ssmPubKey := filepath.Clean(viper.GetString("ssm-public-key"))
+
 	archive_directory := viper.GetString("archive-directory")
 	scratch_directory := viper.GetString("scratch-directory")
 	aws_profile := viper.GetString("aws-profile")
@@ -243,6 +247,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 		Org             : org,
 		Prefix          : prefix,
 		PubKey          : pubKey,
+		SSMPubKey       : ssmPubKey,
 		ScratchDirectory: scratch_directory,
 		ArchiveDirectory: archive_directory,
 		AwsProfile      : aws_profile,
@@ -264,7 +269,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 func checkShareOptions(options options.Options) {
     log.Debug("Checking input arguments...")
 
-	if options.AwsKey == "" && options.PubKey == "" {
+	if options.AwsKey == "" && options.PubKey == "" && options.SSMPubKey == "" {
 		panic("Need to supply either AWS Key for S3 level encryption or a public key for GPG encryption or both!. Insufficient key material to perform safe encryption.")
 	}
 
@@ -294,23 +299,28 @@ func init() {
 
 	rootCmd.AddCommand(shareCmd)
 
+    // core flags
 	shareCmd.PersistentFlags().String("directory", "", "The directory to zip, encrypt and share.")
 	shareCmd.MarkFlagRequired("directory")
 	shareCmd.PersistentFlags().String("org", "", "The Org that owns the files.")
 	shareCmd.MarkFlagRequired("org")
 	shareCmd.PersistentFlags().String("prefix", "", "A prefix for the S3 path. Currently used to separate clinical and documents files.")
 
+    // technical configuration
 	shareCmd.PersistentFlags().Int("parallelism", 10, "The maximum number of files to download and decrypt at a time within a batch.")
 	shareCmd.PersistentFlags().Int("batch-size", 10000, "Files are uploaded and archived in batches of this size. Manifest files are updated and uploaded after each factor of batch-size.")
 	shareCmd.PersistentFlags().Bool("lambda-trigger", true, "Will send a trigger file to the S3 bucket upon both process completion (when all valid files in the input directory are uploaded) and each internal S3 bucket tie off.")
+	shareCmd.PersistentFlags().String("aws-profile", "", "AWS Profile to use for the session.")
 
+    // optional file / file-path configurations
     shareCmd.PersistentFlags().String("scratch-directory", "", "If provided, serves as location where .zip & .gpg files are written to. Is automatically suffixed by org argument. Intended to be leveraged if location will have superior write/read performance. If not provided, .zip and .gpg files are written to the original directory.")
     shareCmd.PersistentFlags().String("archive-directory", "", "If provided, contents of upload directory are moved here after each batch.")
     shareCmd.PersistentFlags().String("metadata-files", "", "If provided, these files are the first to be uploaded and the last to be archived out of the input directory. Comma-separated. I.E. --metadata-files=file1,file2,file3")
 
+    // ssm key options
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 	shareCmd.PersistentFlags().String("receiver-public-key", "", "The receiver's public key.  A local file path.")
-	shareCmd.PersistentFlags().String("aws-profile", "", "AWS Profile to use for the session.")
+	shareCmd.PersistentFlags().String("ssm-public-key", "", "The receiver's public key.  A local file path.")
 
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
@@ -323,6 +333,7 @@ func init() {
 	viper.BindPFlag("metadata-files", shareCmd.PersistentFlags().Lookup("metadata-files"))
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
 	viper.BindPFlag("receiver-public-key", shareCmd.PersistentFlags().Lookup("receiver-public-key"))
+	viper.BindPFlag("ssm-public-key", shareCmd.PersistentFlags().Lookup("ssm-public-key"))
 	viper.BindPFlag("aws-profile", shareCmd.PersistentFlags().Lookup("aws-profile"))
 
 	//log.SetFormatter(&log.JSONFormatter{})

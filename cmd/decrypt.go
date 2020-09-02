@@ -42,6 +42,7 @@ var decryptCmd = &cobra.Command{
 		viper.BindPFlag("region", cmd.Flags().Lookup("region"))
 		viper.BindPFlag("parallelism", cmd.Flags().Lookup("parallelism"))
 		viper.BindPFlag("aws-profile", cmd.Flags().Lookup("aws-profile"))
+		viper.BindPFlag("ssm-public-key", cmd.Flags().Lookup("ssm-public-key"))
 		cmd.MarkFlagRequired("directory")
 		cmd.MarkFlagRequired("region")
 	},
@@ -189,6 +190,7 @@ func checkDecryptOptions(options options.Options) {
 func init() {
 	rootCmd.AddCommand(decryptCmd)
 
+    // core flags
 	decryptCmd.PersistentFlags().String("file", "", "The path to the file to decrypt.  Can be manifest or single file.")
 	decryptCmd.MarkFlagRequired("file")
 	decryptCmd.PersistentFlags().String("directory", "", "The destination directory to decrypt and unzip.")
@@ -196,13 +198,14 @@ func init() {
 	decryptCmd.PersistentFlags().String("region", "", "The AWS region of the target bucket.")
 	decryptCmd.MarkFlagRequired("region")
 
+    // technical configuration
 	decryptCmd.PersistentFlags().Int("parallelism", 10, "The maximum number of files to download and decrypt at a time.")
-
 	decryptCmd.PersistentFlags().String("awsprofile", "", "AWS profile to use when establishing sessions with AWS's SDK.")
+
+    // ssm keys
 	decryptCmd.PersistentFlags().String("my-private-key", "", "The receiver's private key.  A local file path.")
 	decryptCmd.PersistentFlags().String("my-public-key", "", "The receiver's public key.  A local file path.")
     decryptCmd.PersistentFlags().String("ssm-private-key", "", "The receiver's private key.  A parameter name in SSM.")
-	decryptCmd.PersistentFlags().String("ssm-public-key", "", "The receiver's public key.  A parameter name in SSM.")
 
 	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
 	viper.BindPFlag("directory", decryptCmd.PersistentFlags().Lookup("directory"))
@@ -211,7 +214,6 @@ func init() {
 	viper.BindPFlag("my-private-key", decryptCmd.PersistentFlags().Lookup("my-private-key"))
 	viper.BindPFlag("my-public-key", decryptCmd.PersistentFlags().Lookup("my-public-key"))
     viper.BindPFlag("ssm-private-key", decryptCmd.PersistentFlags().Lookup("ssm-private-key"))
-	viper.BindPFlag("ssm-public-key", decryptCmd.PersistentFlags().Lookup("ssm-public-key"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})

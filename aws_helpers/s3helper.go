@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
-// Upload
+// Given file, open contents and send to S3
 func UploadFile(sess *session.Session, org string, aws_key string, local_path string, opts options.Options) error {
     uploader := s3manager.NewUploader(sess)
 
@@ -95,7 +95,7 @@ func UploadLambdaTrigger(sess *session.Session, org string, folder string, opts 
 }
 
 
-// Download
+// Given an aws key, download file to local machine
 func DownloadFile(sess *session.Session, bucket string, org string, aws_key string, target_path string) (string, error) {
 	file, err := os.Create(target_path)
 	utils.PanicIfError("Unable to open file - ", err)
