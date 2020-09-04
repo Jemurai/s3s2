@@ -224,7 +224,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	prefix := viper.GetString("prefix")
 
 	pubKey := filepath.Clean(viper.GetString("receiver-public-key"))
-	ssmPubKey := filepath.Clean(viper.GetString("ssm-public-key"))
+	ssmPubKey := viper.GetString("ssm-public-key")
 
 	archive_directory := viper.GetString("archive-directory")
 	scratch_directory := viper.GetString("scratch-directory")
