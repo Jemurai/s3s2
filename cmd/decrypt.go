@@ -134,7 +134,7 @@ func buildDecryptOptions() options.Options {
 	}
 
 	region := viper.GetString("region")
-	awsProfile := viper.GetString("awsprofile")
+	awsProfile := viper.GetString("aws-profile")
 	privKey := viper.GetString("my-private-key")
 	pubKey := viper.GetString("my-public-key")
 	ssmPrivKey := viper.GetString("ssm-private-key")
@@ -210,7 +210,7 @@ func init() {
 	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
 	viper.BindPFlag("directory", decryptCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("parallelism", decryptCmd.PersistentFlags().Lookup("parallelism"))
-	viper.BindPFlag("awsprofile", decryptCmd.PersistentFlags().Lookup("awsprofile"))
+	viper.BindPFlag("aws-profile", decryptCmd.PersistentFlags().Lookup("aws-profile"))
 	viper.BindPFlag("my-private-key", decryptCmd.PersistentFlags().Lookup("my-private-key"))
 	viper.BindPFlag("my-public-key", decryptCmd.PersistentFlags().Lookup("my-public-key"))
     viper.BindPFlag("ssm-private-key", decryptCmd.PersistentFlags().Lookup("ssm-private-key"))
