@@ -200,7 +200,7 @@ func init() {
 
     // technical configuration
 	decryptCmd.PersistentFlags().Int("parallelism", 10, "The maximum number of files to download and decrypt at a time.")
-	decryptCmd.PersistentFlags().String("awsprofile", "", "AWS profile to use when establishing sessions with AWS's SDK.")
+	decryptCmd.PersistentFlags().String("aws-profile", "", "AWS profile to use when establishing sessions with AWS's SDK.")
 
     // ssm keys
 	decryptCmd.PersistentFlags().String("my-private-key", "", "The receiver's private key.  A local file path.")
