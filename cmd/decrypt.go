@@ -206,6 +206,7 @@ func init() {
 	decryptCmd.PersistentFlags().String("my-private-key", "", "The receiver's private key.  A local file path.")
 	decryptCmd.PersistentFlags().String("my-public-key", "", "The receiver's public key.  A local file path.")
     decryptCmd.PersistentFlags().String("ssm-private-key", "", "The receiver's private key.  A parameter name in SSM.")
+    decryptCmd.PersistentFlags().String("ssm-public-key", "", "The receiver's private key.  A parameter name in SSM.")
 
 	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
 	viper.BindPFlag("directory", decryptCmd.PersistentFlags().Lookup("directory"))
@@ -214,6 +215,7 @@ func init() {
 	viper.BindPFlag("my-private-key", decryptCmd.PersistentFlags().Lookup("my-private-key"))
 	viper.BindPFlag("my-public-key", decryptCmd.PersistentFlags().Lookup("my-public-key"))
     viper.BindPFlag("ssm-private-key", decryptCmd.PersistentFlags().Lookup("ssm-private-key"))
+    viper.BindPFlag("ssm-public-key", decryptCmd.PersistentFlags().Lookup("ssm-public-key"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})
