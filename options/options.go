@@ -11,16 +11,17 @@ type Options struct {
 	Parallelism int    `json:"parallelism"`
 
 	// Encrypt only
-	PubKey           string   `json:"pubkey"`
-	SSMPubKey        string   `json:"ssmpubkey"`
-	AwsKey           string   `json:"awskey"`
-	Prefix           string   `json:"prefix"`
-	Hash             bool     `json:"hash"`
-	ArchiveDirectory string   `json:"archive-directory"`
-	ScratchDirectory string   `json:"scratch-directory"`
-	MetaDataFiles    []string `json:"metadata-files"`
-	BatchSize        int      `json:"batchsize"`
-	LambdaTrigger    bool     `json:"lambda-trigger"`
+	PubKey             string   `json:"pubkey"`
+	SSMPubKey          string   `json:"ssmpubkey"`
+	AwsKey             string   `json:"awskey"`
+	Prefix             string   `json:"prefix"`
+	Hash               bool     `json:"hash"`
+	ArchiveDirectory   string   `json:"archive-directory"`
+	ScratchDirectory   string   `json:"scratch-directory"`
+	MetaDataFiles      []string `json:"metadata-files"`
+	BatchSize          int      `json:"batchsize"`
+	LambdaTrigger      bool     `json:"lambda-trigger"`
+	DeleteOnCompletion bool     `json:"delete-on-completion"`
 
 	// Decrypt only
 	File        string `json:"file"`

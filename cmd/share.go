@@ -161,7 +161,9 @@ var shareCmd = &cobra.Command{
             file.ArchiveFileStructs(file_structs_metadata, opts.Directory, opts.ArchiveDirectory)
         }
 
-        utils.RemoveContents(opts.Directory)
+        if opts.DeleteOnCompletion == true {
+            utils.RemoveContents(opts.Directory)
+        }
 
         if opts.ScratchDirectory != "" {
             os.Remove(work_folder)
@@ -232,6 +234,8 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	parallelism := viper.GetInt("parallelism")
 	batchSize := viper.GetInt("batch-size")
 
+	deleteOnCompletion := viper.GetBool("delete-on-completion")
+
 	var metaDataFiles []string
 	if viper.GetString("metadata-files") != "" {
 	    metaDataFiles = strings.Split(viper.GetString("metadata-files"), ",")
@@ -240,21 +244,22 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	lambdaTrigger := viper.GetBool("lambda-trigger")
 
 	options := options.Options{
-		Directory       : directory,
-		AwsKey          : awsKey,
-		Bucket          : bucket,
-		Region          : region,
-		Org             : org,
-		Prefix          : prefix,
-		PubKey          : pubKey,
-		SSMPubKey       : ssmPubKey,
-		ScratchDirectory: scratch_directory,
-		ArchiveDirectory: archive_directory,
-		AwsProfile      : aws_profile,
-		Parallelism     : parallelism,
-		BatchSize       : batchSize,
-		MetaDataFiles   : metaDataFiles,
-		LambdaTrigger   : lambdaTrigger,
+		Directory          : directory,
+		AwsKey             : awsKey,
+		Bucket             : bucket,
+		Region             : region,
+		Org                : org,
+		Prefix             : prefix,
+		PubKey             : pubKey,
+		SSMPubKey          : ssmPubKey,
+		ScratchDirectory   : scratch_directory,
+		ArchiveDirectory   : archive_directory,
+		AwsProfile         : aws_profile,
+		Parallelism        : parallelism,
+		BatchSize          : batchSize,
+		MetaDataFiles      : metaDataFiles,
+		LambdaTrigger      : lambdaTrigger,
+		DeleteOnCompletion : deleteOnCompletion,
 	}
 
 	debug := viper.GetBool("debug")
@@ -316,6 +321,7 @@ func init() {
     shareCmd.PersistentFlags().String("scratch-directory", "", "If provided, serves as location where .zip & .gpg files are written to. Is automatically suffixed by org argument. Intended to be leveraged if location will have superior write/read performance. If not provided, .zip and .gpg files are written to the original directory.")
     shareCmd.PersistentFlags().String("archive-directory", "", "If provided, contents of upload directory are moved here after each batch.")
     shareCmd.PersistentFlags().String("metadata-files", "", "If provided, these files are the first to be uploaded and the last to be archived out of the input directory. Comma-separated. I.E. --metadata-files=file1,file2,file3")
+    shareCmd.PersistentFlags().Bool("delete-on-completion", true, "If provided, provided directory will be deleted upon the upload of the files.")
 
     // ssm key options
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
@@ -335,6 +341,7 @@ func init() {
 	viper.BindPFlag("receiver-public-key", shareCmd.PersistentFlags().Lookup("receiver-public-key"))
 	viper.BindPFlag("ssm-public-key", shareCmd.PersistentFlags().Lookup("ssm-public-key"))
 	viper.BindPFlag("aws-profile", shareCmd.PersistentFlags().Lookup("aws-profile"))
+	viper.BindPFlag("delete-on-completion", shareCmd.PersistentFlags().Lookup("delete-on-completion"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})
