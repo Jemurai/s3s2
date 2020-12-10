@@ -63,7 +63,7 @@ var shareCmd = &cobra.Command{
 		    panic("No files from input directory were read. This means the directory is empty or only contains invalid files.")
 		}
 
-		file_struct_batches := append([][]file.File{file_structs_metadata}, file.ChunkArray(file_structs, opts.BatchSize)...)
+		file_struct_chunks := append([][]file.File{file_structs_metadata}, file.ChunkArray(file_structs, opts.ChunkSize)...)
 
 	    var work_folder string
         if opts.ScratchDirectory != "" {
@@ -77,7 +77,7 @@ var shareCmd = &cobra.Command{
 
 	    sem := make(chan int, opts.Parallelism)
 
-		change_s3_folders_at_size := 100000 + len(file_structs_metadata)
+		change_s3_folders_at_size := opts.BatchSize + len(file_structs_metadata)
         current_s3_folder_size := 0
         current_s3_batch := 0
 
@@ -88,17 +88,17 @@ var shareCmd = &cobra.Command{
 
 		batch_folder = fmt.Sprintf("%s_s3s2_%s_%d", opts.Prefix, fnuuid, current_s3_batch)
 
-        // for each batch
-		for i_batch, batch := range file_struct_batches {
+        // for each chunk
+		for i_chunk, chunk := range file_struct_chunks {
 
-		    log.Infof("Processing batch '%d'...", i_batch)
+		    log.Infof("Processing chunk '%d'...", i_chunk)
 
-		    // refresh session every batch
+		    // refresh session every chunk
 		    sess = utils.GetAwsSession(opts)
 
             // tie off this current s3 directory allowing us to decrypt in batches of this size
             // this is used to create digestable folders for decrypt
-		    if current_s3_folder_size + len(batch) > change_s3_folders_at_size {
+		    if current_s3_folder_size + len(chunk) > change_s3_folders_at_size {
 
                 // fire lambda for the batch we are tieing off
 		        if opts.LambdaTrigger == true {
@@ -120,10 +120,10 @@ var shareCmd = &cobra.Command{
 
             }
 
-            wg.Add(len(batch))
+            wg.Add(len(chunk))
 
-            // for each file in batch
-            for _, fs := range batch {
+            // for each file in chunk
+            for _, fs := range chunk {
                 go func(wg *sync.WaitGroup, sess *session.Session, _pubkey *packet.PublicKey, folder string, fs file.File, opts options.Options) {
                     sem <- 1
                     defer func() { <-sem }()
@@ -134,26 +134,26 @@ var shareCmd = &cobra.Command{
 
             wg.Wait()
 
-            current_s3_folder_size += len(batch)
-		    all_uploaded_files_so_far = append(all_uploaded_files_so_far, batch...)
+            current_s3_folder_size += len(chunk)
+		    all_uploaded_files_so_far = append(all_uploaded_files_so_far, chunk...)
 
-            // upon batch completion
+            // upon chunk completion
             m, err = manifest.BuildManifest(all_uploaded_files_so_far, batch_folder, opts)
             utils.PanicIfError("Error building Manifest", err)
 
-            // create manifest in top-level directory - overwrite any existing manifest to include latest batch
+            // create manifest in top-level directory - overwrite any existing manifest to include latest chunk
             manifest_aws_key := filepath.Join(batch_folder, m.Name)
             manifest_local := filepath.Join(opts.Directory, m.Name)
             err = aws_helpers.UploadFile(sess, opts.Org, manifest_aws_key, manifest_local, opts)
             utils.PanicIfError("Error uploading Manifest", err)
 
             // archive the files we processed in this batch, dont archive metadata files until entire process is done
-            if opts.ArchiveDirectory != "" && i_batch != 0 {
-                log.Infof("Archiving files in batch '%d'", i_batch)
-                file.ArchiveFileStructs(batch, opts.Directory, opts.ArchiveDirectory)
+            if opts.ArchiveDirectory != "" && i_chunk != 0 {
+                log.Infof("Archiving files in chunk '%d'", i_chunk)
+                file.ArchiveFileStructs(chunk, opts.Directory, opts.ArchiveDirectory)
             }
 
-            log.Infof("Successfully processed batch '%d'", i_batch)
+            log.Infof("Successfully processed chunk '%d'", i_chunk)
 
         }
         // archive metafiles now
@@ -232,6 +232,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	scratch_directory := viper.GetString("scratch-directory")
 	aws_profile := viper.GetString("aws-profile")
 	parallelism := viper.GetInt("parallelism")
+	chunkSize := viper.GetInt("chunk-size")
 	batchSize := viper.GetInt("batch-size")
 
 	deleteOnCompletion := viper.GetBool("delete-on-completion")
@@ -256,6 +257,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 		ArchiveDirectory   : archive_directory,
 		AwsProfile         : aws_profile,
 		Parallelism        : parallelism,
+		ChunkSize          : chunkSize,
 		BatchSize          : batchSize,
 		MetaDataFiles      : metaDataFiles,
 		LambdaTrigger      : lambdaTrigger,
@@ -313,7 +315,8 @@ func init() {
 
     // technical configuration
 	shareCmd.PersistentFlags().Int("parallelism", 10, "The maximum number of files to download and decrypt at a time within a batch.")
-	shareCmd.PersistentFlags().Int("batch-size", 10000, "Files are uploaded and archived in batches of this size. Manifest files are updated and uploaded after each factor of batch-size.")
+	shareCmd.PersistentFlags().Int("chunk-size", 10000, "Files are uploaded and archived in chunks of this size. In case of errors midrun, the latest factor of this number would be present and valid in s3. Many chunks make up a batch.")
+	shareCmd.PersistentFlags().Int("batch-size", 100000, "The s3 location increments after every factor of this number. Serves as a cap on batch sizes downstream. A batch is uploaded in many chunks.")
 	shareCmd.PersistentFlags().Bool("lambda-trigger", true, "Will send a trigger file to the S3 bucket upon both process completion (when all valid files in the input directory are uploaded) and each internal S3 bucket tie off.")
 	shareCmd.PersistentFlags().String("aws-profile", "", "AWS Profile to use for the session.")
 
@@ -332,6 +335,7 @@ func init() {
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
 	viper.BindPFlag("prefix", shareCmd.PersistentFlags().Lookup("prefix"))
 	viper.BindPFlag("parallelism", shareCmd.PersistentFlags().Lookup("parallelism"))
+	viper.BindPFlag("chunk-size", shareCmd.PersistentFlags().Lookup("chunk-size"))
 	viper.BindPFlag("batch-size", shareCmd.PersistentFlags().Lookup("batch-size"))
 	viper.BindPFlag("lambda-trigger", shareCmd.PersistentFlags().Lookup("lambda-trigger"))
 	viper.BindPFlag("scratch-directory", shareCmd.PersistentFlags().Lookup("scratch-directory"))

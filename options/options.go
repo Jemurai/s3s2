@@ -19,6 +19,7 @@ type Options struct {
 	ArchiveDirectory   string   `json:"archive-directory"`
 	ScratchDirectory   string   `json:"scratch-directory"`
 	MetaDataFiles      []string `json:"metadata-files"`
+	ChunkSize          int      `json:"chunksize"`
 	BatchSize          int      `json:"batchsize"`
 	LambdaTrigger      bool     `json:"lambda-trigger"`
 	DeleteOnCompletion bool     `json:"delete-on-completion"`
