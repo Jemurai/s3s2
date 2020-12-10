@@ -88,8 +88,6 @@ var shareCmd = &cobra.Command{
 
 		batch_folder = fmt.Sprintf("%s_s3s2_%s_%d", opts.Prefix, fnuuid, current_s3_batch)
 
-		log.Infof("%s", opts)
-
         // for each chunk
 		for i_chunk, chunk := range file_struct_chunks {
 
