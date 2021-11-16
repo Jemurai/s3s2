@@ -43,6 +43,7 @@ var decryptCmd = &cobra.Command{
 		viper.BindPFlag("parallelism", cmd.Flags().Lookup("parallelism"))
 		viper.BindPFlag("aws-profile", cmd.Flags().Lookup("aws-profile"))
 		viper.BindPFlag("ssm-public-key", cmd.Flags().Lookup("ssm-public-key"))
+		viper.BindPFlag("is-gcs", cmd.Flags().Lookup("is-gcs"))
 		cmd.MarkFlagRequired("directory")
 		cmd.MarkFlagRequired("region")
 	},
@@ -64,7 +65,7 @@ var decryptCmd = &cobra.Command{
 		    log.Info("Detected manifest file...")
 
 		    target_manifest_path := filepath.Join(opts.Directory, filepath.Base(opts.File))
-			fn, err := aws_helpers.DownloadFile(sess, opts.Bucket, opts.Org, opts.File, target_manifest_path)
+			fn, err := aws_helpers.DownloadFile(sess, opts.Bucket, opts.Org, opts.File, target_manifest_path, opts)
 			utils.PanicIfError("Unable to download file - ", err)
 
 			m := manifest.ReadManifest(fn)
@@ -112,7 +113,7 @@ func decryptFile(sess *session.Session, _pubkey *packet.PublicKey, _privkey *pac
 	nested_dir := filepath.Dir(target_path)
 	os.MkdirAll(nested_dir, os.ModePerm)
 
-	_, err := aws_helpers.DownloadFile(sess, opts.Bucket, m.Organization, aws_key, target_path)
+	_, err := aws_helpers.DownloadFile(sess, opts.Bucket, m.Organization, aws_key, target_path, opts)
 	utils.PanicIfError("Unable to download file - ", err)
 
     encrypt.DecryptFile(_pubkey, _privkey, target_path, fn_zip, opts)
@@ -139,6 +140,7 @@ func buildDecryptOptions() options.Options {
 	pubKey := viper.GetString("my-public-key")
 	ssmPrivKey := viper.GetString("ssm-private-key")
 	ssmPubKey := viper.GetString("ssm-public-key")
+	isGCS := viper.GetBool("is-gcs")
 	parallelism := viper.GetInt("parallelism")
 
 	options := options.Options{
@@ -149,6 +151,7 @@ func buildDecryptOptions() options.Options {
 		Region:      region,
 		PrivKey:     privKey,
 		PubKey:      pubKey,
+		IsGCS: 		 isGCS,
 		SSMPrivKey:  ssmPrivKey,
 		SSMPubKey:   ssmPubKey,
 		AwsProfile:  awsProfile,
@@ -207,6 +210,7 @@ func init() {
 	decryptCmd.PersistentFlags().String("my-public-key", "", "The receiver's public key.  A local file path.")
     decryptCmd.PersistentFlags().String("ssm-private-key", "", "The receiver's private key.  A parameter name in SSM.")
     decryptCmd.PersistentFlags().String("ssm-public-key", "", "The receiver's public key.  A parameter name in SSM.")
+	decryptCmd.PersistentFlags().Bool("is-gcs", false, "If the interaction is with gcs.")
 
 	viper.BindPFlag("file", decryptCmd.PersistentFlags().Lookup("file"))
 	viper.BindPFlag("directory", decryptCmd.PersistentFlags().Lookup("directory"))
@@ -216,6 +220,7 @@ func init() {
 	viper.BindPFlag("my-public-key", decryptCmd.PersistentFlags().Lookup("my-public-key"))
     viper.BindPFlag("ssm-private-key", decryptCmd.PersistentFlags().Lookup("ssm-private-key"))
     viper.BindPFlag("ssm-public-key", decryptCmd.PersistentFlags().Lookup("ssm-public-key"))
+	viper.BindPFlag("is-gcs", decryptCmd.PersistentFlags().Lookup("is-gcs"))
 
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})
