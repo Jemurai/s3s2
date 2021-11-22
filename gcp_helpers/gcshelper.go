@@ -7,11 +7,13 @@ import (
     "path/filepath"
 	"io"
 	"io/ioutil"
-	
+	"google.golang.org/api/option"
 	log "github.com/sirupsen/logrus"
 	options "github.com/tempuslabs/s3s2/options"
 	utils "github.com/tempuslabs/s3s2/utils"
 	"cloud.google.com/go/storage"
+	
+	
 )
 
 
@@ -83,18 +85,18 @@ func DownloadFile(bucket string, org string, aws_key string, target_path string)
 	file, err := os.Create(target_path)
 	utils.PanicIfError("Unable to open file - ", err)
 	ctx := context.Background()
-	client, err := storage.NewClient(ctx)
+	client, err := storage.NewClient(ctx, option.WithCredentialsFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")))
 	utils.PanicIfError("Unable to get context client - ", err)
 
 	final_key := filepath.Join(org, aws_key)
-	
+
 	rc, err := client.Bucket(bucket).Object(final_key).NewReader(ctx)
-	utils.PanicIfError("Unable to get client - ", err)
+	utils.PanicIfError("Unable to get object - ", err)
 
 	log.Infof("Downloading from key '%s' to file '%s'", final_key, target_path)
 
 	data, err := ioutil.ReadAll(rc)
-	utils.PanicIfError("Unable to download file - ", err)
+	utils.PanicIfError("Unable to download file at ioutil.ReadAll - ", err)
 	defer rc.Close()
 
 	_, err = file.Write(data)

@@ -18,7 +18,6 @@ import (
 // Given file, open contents and send to S3
 func UploadFile(sess *session.Session, org string, aws_key string, local_path string, opts options.Options) error {
     if opts.IsGCS == true {
-        log.Infof("This is a GCS upload UploadFile")
         return gcp_helpers.UploadFile(org, aws_key, local_path, opts)
     } else {
     
@@ -71,7 +70,6 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
 // Dedicated function for uploading our lambda trigger file - our way of communicating that s3s2 is done
 func UploadLambdaTrigger(sess *session.Session, org string, folder string, opts options.Options) error {
     if opts.IsGCS == true {
-        log.Infof("This is a GCS upload UploadLambdaTrigger")
         return gcp_helpers.UploadLambdaTrigger(org, folder, opts)
     } else {
         uploader := s3manager.NewUploader(sess)
@@ -110,7 +108,6 @@ func UploadLambdaTrigger(sess *session.Session, org string, folder string, opts 
 // Given an aws key, download file to local machine
 func DownloadFile(sess *session.Session, bucket string, org string, aws_key string, target_path string, opts options.Options) (string, error) {
     if opts.IsGCS == true {
-        log.Infof("This is a GCS Download")
         return gcp_helpers.DownloadFile(bucket, org, aws_key, target_path)
     } else {
         file, err := os.Create(target_path)
