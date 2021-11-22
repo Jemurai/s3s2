@@ -9,7 +9,7 @@ import (
 	session "github.com/aws/aws-sdk-go/aws/session"
 	options "github.com/tempuslabs/s3s2/options"
 	utils "github.com/tempuslabs/s3s2/utils"
-    gcp_helpers "github.com/tempuslabs/s3s2/gcp_helpers"
+	gcp_helpers "github.com/tempuslabs/s3s2/gcp_helpers"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
