@@ -27,3 +27,4 @@ do
         exit 1
     fi
 done
+go build -buildmode=c-shared -o ./so/s3s2.so sharedobj/sodecrypt.go

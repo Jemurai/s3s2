@@ -44,6 +44,7 @@ var shareCmd = &cobra.Command{
 		viper.BindPFlag("parallelism", cmd.Flags().Lookup("parallelism"))
 		viper.BindPFlag("aws-profile", cmd.Flags().Lookup("aws-profile"))
 		viper.BindPFlag("ssm-public-key", cmd.Flags().Lookup("ssm-public-key"))
+		viper.BindPFlag("is-gcs", cmd.Flags().Lookup("is-gcs"))
 		cmd.MarkFlagRequired("directory")
 		cmd.MarkFlagRequired("org")
 		cmd.MarkFlagRequired("region")
@@ -227,6 +228,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 
 	pubKey := filepath.Clean(viper.GetString("receiver-public-key"))
 	ssmPubKey := viper.GetString("ssm-public-key")
+	isGCS := viper.GetBool("is-gcs")
 
 	archive_directory := viper.GetString("archive-directory")
 	scratch_directory := viper.GetString("scratch-directory")
@@ -253,6 +255,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 		Prefix             : prefix,
 		PubKey             : pubKey,
 		SSMPubKey          : ssmPubKey,
+		IsGCS          	   : isGCS,
 		ScratchDirectory   : scratch_directory,
 		ArchiveDirectory   : archive_directory,
 		AwsProfile         : aws_profile,
@@ -330,6 +333,7 @@ func init() {
 	shareCmd.PersistentFlags().String("awskey", "", "The agreed upon S3 key to encrypt data with at the bucket.")
 	shareCmd.PersistentFlags().String("receiver-public-key", "", "The receiver's public key.  A local file path.")
 	shareCmd.PersistentFlags().String("ssm-public-key", "", "The receiver's public key.  A local file path.")
+	shareCmd.PersistentFlags().Bool("is-gcs", false, "The receiver's public key.  A local file path.")
 
 	viper.BindPFlag("directory", shareCmd.PersistentFlags().Lookup("directory"))
 	viper.BindPFlag("org", shareCmd.PersistentFlags().Lookup("org"))
@@ -344,6 +348,7 @@ func init() {
 	viper.BindPFlag("awskey", shareCmd.PersistentFlags().Lookup("awskey"))
 	viper.BindPFlag("receiver-public-key", shareCmd.PersistentFlags().Lookup("receiver-public-key"))
 	viper.BindPFlag("ssm-public-key", shareCmd.PersistentFlags().Lookup("ssm-public-key"))
+	viper.BindPFlag("is-gcs", shareCmd.PersistentFlags().Lookup("is-gcs"))
 	viper.BindPFlag("aws-profile", shareCmd.PersistentFlags().Lookup("aws-profile"))
 	viper.BindPFlag("delete-on-completion", shareCmd.PersistentFlags().Lookup("delete-on-completion"))
 

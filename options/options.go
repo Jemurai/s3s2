@@ -13,6 +13,7 @@ type Options struct {
 	// Encrypt only
 	PubKey             string   `json:"pubkey"`
 	SSMPubKey          string   `json:"ssmpubkey"`
+	IsGCS          	   bool   	`json:"isgcs"`
 	AwsKey             string   `json:"awskey"`
 	Prefix             string   `json:"prefix"`
 	Hash               bool     `json:"hash"`
