@@ -12,6 +12,7 @@ import (
 	session "github.com/aws/aws-sdk-go/aws/session"
 	options "github.com/tempuslabs/s3s2/options"
 	client "github.com/aws/aws-sdk-go/aws/client"
+    retryer "github.com/tempuslabs/s3s2/retryer"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -111,8 +112,8 @@ func Include(vs []string, t string) bool {
 }
 
 // Influence creation of the retry logic used by any aws-config-using tools
-func getRetryer() client.DefaultRetryer {
-    retryer := client.DefaultRetryer{NumMaxRetries:10}
+func getRetryer() retryer.CustomRetryer {
+    retryer := retryer.CustomRetryer{client.DefaultRetryer{NumMaxRetries:10}}
     return retryer
 }
 
@@ -121,6 +122,7 @@ func getAwsConfig(opts options.Options) aws.Config {
     conf := aws.Config{
         Region: aws.String(opts.Region),
         Retryer: getRetryer(),
+        LogLevel: aws.LogLevel(aws.LogDebugWithRequestErrors | aws.LogDebugWithRequestRetries),
     }
     return conf
     }
