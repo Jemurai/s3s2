@@ -12,7 +12,7 @@ import (
 	session "github.com/aws/aws-sdk-go/aws/session"
 	options "github.com/tempuslabs/s3s2/options"
 	client "github.com/aws/aws-sdk-go/aws/client"
-    retryer "github.com/tempuslabs/s3s2/retryer"
+	retryer "github.com/tempuslabs/s3s2/retryer"
 	log "github.com/sirupsen/logrus"
 )
 
