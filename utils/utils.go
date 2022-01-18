@@ -121,11 +121,10 @@ func getRetryer() retryer.CustomRetryer {
 func getAwsConfig(opts options.Options) aws.Config {
     conf := aws.Config{
         Region: aws.String(opts.Region),
-        Retryer: getRetryer(),
-        LogLevel: aws.LogLevel(aws.LogDebugWithRequestErrors | aws.LogDebugWithRequestRetries),
+        Retryer: getRetryer()
     }
     return conf
-    }
+}
 
 // Easily add new command line arguments to influence the creation of AWS sessions
 func GetAwsSession(opts options.Options) *session.Session {
