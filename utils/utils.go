@@ -121,7 +121,7 @@ func getRetryer() retryer.CustomRetryer {
 func getAwsConfig(opts options.Options) aws.Config {
     conf := aws.Config{
         Region: aws.String(opts.Region),
-        Retryer: getRetryer()
+        Retryer: getRetryer(),
     }
     return conf
 }
