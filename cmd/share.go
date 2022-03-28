@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"path/filepath"
+	"io/ioutil"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -268,8 +269,12 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	}
 
 	debug := viper.GetBool("debug")
+	disableinfologs := viper.GetBool("disableinfologs")
 	if debug != true {
 		log.SetLevel(log.InfoLevel)
+	}
+	if disableinfologs == true {
+        log.SetOutput(ioutil.Discard)
 	}
 	log.Debugf("Captured options: %s", options)
 
