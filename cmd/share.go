@@ -92,7 +92,7 @@ var shareCmd = &cobra.Command{
         // for each chunk
 		for i_chunk, chunk := range file_struct_chunks {
 
-		    log.Infof("Processing chunk '%d'...", i_chunk)
+		    log.Debugf("Processing chunk '%d'...", i_chunk)
 
 		    // refresh session every chunk
 		    sess = utils.GetAwsSession(opts)
@@ -154,7 +154,7 @@ var shareCmd = &cobra.Command{
                 file.ArchiveFileStructs(chunk, opts.Directory, opts.ArchiveDirectory)
             }
 
-            log.Infof("Successfully processed chunk '%d'", i_chunk)
+            log.Debugf("Successfully processed chunk '%d'", i_chunk)
 
         }
         // archive metafiles now
@@ -271,6 +271,7 @@ func buildShareOptions(cmd *cobra.Command) options.Options {
 	if debug != true {
 		log.SetLevel(log.InfoLevel)
 	}
+
 	log.Debugf("Captured options: %s", options)
 
 	return options

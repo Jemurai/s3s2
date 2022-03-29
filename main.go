@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -11,4 +10,3 @@ func main() {
 	cmd.Execute()
 	log.Info("Completed S3S2.")
 }
-

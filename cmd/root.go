@@ -1,4 +1,3 @@
-
 package cmd
 
 import (
@@ -46,7 +45,7 @@ func Execute() {
 }
 
 func init() {
-    log.Debug("Initializing root configurations...")
+	log.Debug("Initializing root configurations...")
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.s3s2.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "debug mode")
@@ -61,8 +60,7 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-
-    log.Debug("Setting log level...")
+	log.Debug("Setting log level...")
 	if debug {
 		log.SetLevel(log.DebugLevel)
 	} else {
@@ -71,7 +69,7 @@ func initConfig() {
 
 	log.SetFormatter(&log.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
 
-    log.Debug("Determining config source...")
+	log.Debug("Determining config source...")
 	if cfgFile != "" {
 		// Use config file from the flag.
 		log.Debug("Setting config file...")
@@ -90,7 +88,7 @@ func initConfig() {
 		viper.SetConfigName(".s3s2")
 	}
 
-    log.Debug("Reading environment variables...")
+	log.Debug("Reading environment variables...")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.

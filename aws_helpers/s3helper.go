@@ -43,7 +43,7 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
                 if err != nil {
                     utils.PanicIfError("Failed to upload file: ", err)
                 } else {
-                    log.Infof("File '%s' uploaded to: '%s'", file.Name(), result.Location)
+                    log.Debugf("File '%s' uploaded to: '%s'", file.Name(), result.Location)
                     file.Close()
                     return err
                 }
@@ -58,7 +58,7 @@ func UploadFile(sess *session.Session, org string, aws_key string, local_path st
                 if err != nil {
                     utils.PanicIfError("Failed to upload file: ", err)
                 } else {
-                    log.Infof("File '%s' uploaded to: '%s'", file.Name(), result.Location)
+                    log.Debugf("File '%s' uploaded to: '%s'", file.Name(), result.Location)
                     file.Close()
                     return err
                 }
@@ -88,7 +88,7 @@ func UploadLambdaTrigger(sess *session.Session, org string, folder string, opts 
                 Body:                 strings.NewReader(""),
             })
             utils.PanicIfError("Failed to upload file: ", err)
-            log.Infof("File '%s' uploaded to: '%s'", file_name, result.Location)
+            log.Debugf("File '%s' uploaded to: '%s'", file_name, result.Location)
             return err
 
         } else {
@@ -98,7 +98,7 @@ func UploadLambdaTrigger(sess *session.Session, org string, folder string, opts 
                 Body:   strings.NewReader(""),
             })
             utils.PanicIfError("Failed to upload file: ", err)
-            log.Infof("File '%s' uploaded to: '%s'", file_name, result.Location)
+            log.Debugf("File '%s' uploaded to: '%s'", file_name, result.Location)
             return err
         }
     }
