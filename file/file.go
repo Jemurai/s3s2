@@ -103,7 +103,7 @@ func GetFileStructsFromDir(directory string, opts options.Options) ([]File, []Fi
         panic(err)
     }
 
-    log.Infof("Identified metadata-files '%s'...", file_structs_metadata)
+    log.Debugf("Identified metadata-files '%s'...", file_structs_metadata)
 
     return file_structs, file_structs_metadata, err
 

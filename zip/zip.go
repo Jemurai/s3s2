@@ -14,7 +14,7 @@ import (
 // ZipFile zips the provided file.
 func ZipFile(InputFn string, OutputFn string, directory string) string {
 
-    log.Infof("Zipping file '%s' to '%s'", InputFn, OutputFn)
+    log.Debugf("Zipping file '%s' to '%s'", InputFn, OutputFn)
 
     dir, _ := filepath.Split(OutputFn)
 

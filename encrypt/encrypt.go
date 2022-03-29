@@ -169,7 +169,7 @@ func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) 
 }
 
 func EncryptFile(pubKey *packet.PublicKey, InputFn string, OutputFn string, Opts options.Options) string {
-    log.Infof("Encrypting file '%s' to '%s'...", InputFn, OutputFn)
+    log.Debugf("Encrypting file '%s' to '%s'...", InputFn, OutputFn)
 
 	to := createEntityFromKeys(pubKey, nil) // We shouldn't have the receiver's private key!
 

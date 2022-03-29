@@ -47,7 +47,7 @@ func UploadFile(org string, aws_key string, local_path string, opts options.Opti
 	if err != nil {
 		utils.PanicIfError("Failed to upload file: ", err)
 	} else {
-		log.Infof("File '%s' uploaded to:  bucket = '%s', key = '%s'", file.Name(), opts.Bucket, final_key)
+		log.Debugf("File '%s' uploaded to:  bucket = '%s', key = '%s'", file.Name(), opts.Bucket, final_key)
 		return err
 	}
 
@@ -74,7 +74,7 @@ func UploadLambdaTrigger(org string, folder string, opts options.Options) error 
 	_, err = io.Copy(wc, file)
 
 	utils.PanicIfError("Failed to upload file: ", err)
-	log.Infof("File '%s' uploaded to", file_name)
+	log.Debugf("File '%s' uploaded to", file_name)
 	return err
 }
 

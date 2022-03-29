@@ -49,7 +49,7 @@ func ReadManifest(file string) Manifest {
 
 func BuildManifest(file_structs []file.File, batch_folder string, options options.Options) (Manifest, error) {
 
-    log.Info("Building manifest...")
+    log.Debug("Building manifest...")
 
 	user, err := user.Current()
 	sudoUser := os.Getenv("SUDO_USER") // In case they are sudo'ing, we can know the acting user.
