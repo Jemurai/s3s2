@@ -33,7 +33,7 @@ pipeline {
                 // NEXUS_CREDS_PSW = password
                 // https://jenkins.io/doc/book/pipeline/jenkinsfile/#handling-credentials
                 NEXUS_CREDS = credentials('nexus-leeroy-tempus-n')
-                NEXUS_PATH = 'https://nexus.securetempus.com/repository/tempus-n'
+                NEXUS_PATH = 'https://nexus.opstempus.com/repository/tempus-n'
                 S3S2_VERSION = "${GIT_COMMIT}"
                 PUBLIC_S3_BUCKET = 'tdo-n-message-gateway-s3s2-use1'
             }
