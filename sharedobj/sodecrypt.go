@@ -64,7 +64,7 @@ func Decrypt(
 	_privKey := encrypt.GetPrivKey(sess, opts)
 
 	os.MkdirAll(opts.Directory, os.ModePerm)
-
+	log.SetLevel(log.DebugLevel)
 	// if downloading via manifest
 	if strings.HasSuffix(opts.File, "manifest.json") {
 
